@@ -1,0 +1,122 @@
+package com.friend.ios.amuless
+
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.io.IOException
+import java.util.concurrent.TimeUnit
+
+/** Failure talking to Memoria. [retryable] is false for problems only the user can fix (token, missing notebook). */
+class MemoriaException(message: String, val retryable: Boolean) : IOException(message)
+
+/**
+ * Posts transcripts to Memoria (notebook "limitlessPendant" > section "文字起こし").
+ *
+ * The token is only ever put in the Authorization header; it is not logged and does not appear in
+ * exception messages.
+ */
+class MemoriaClient(baseUrl: String, private val token: String) {
+    private val base = baseUrl.trimEnd('/')
+    private val http = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .build()
+    private val json = "application/json; charset=utf-8".toMediaType()
+
+    private data class Node(val id: String, val kind: String, val title: String, val parentId: String?, val revision: String)
+
+    /** Verifies token + notebook + section. Returns null when ok, else a message for the user. */
+    fun check(): String? = try {
+        sectionId(); null
+    } catch (e: MemoriaException) {
+        e.message
+    }
+
+    private fun call(builder: Request.Builder, ifMatch: String? = null): Pair<Int, String> {
+        builder.header("Authorization", "Bearer $token")
+        if (ifMatch != null) builder.header("If-Match", "\"$ifMatch\"")
+        try {
+            http.newCall(builder.build()).execute().use { return Pair(it.code, it.body?.string().orEmpty()) }
+        } catch (e: IOException) {
+            throw MemoriaException("memoria に接続できません(${e.javaClass.simpleName}): Tailscale がオンか確認してください", true)
+        }
+    }
+
+    private fun failFor(code: Int, what: String): Nothing = when (code) {
+        401 -> throw MemoriaException("memoria: トークンが違うか無効です($what)", false)
+        403 -> throw MemoriaException("memoria: このトークンでは使えない操作です($what)", false)
+        429 -> throw MemoriaException("memoria: 一時的に拒否されました(429)。しばらく待ちます", true)
+        else -> throw MemoriaException("memoria: $what が失敗しました(HTTP $code)", code >= 500 || code == 409)
+    }
+
+    private fun tree(): List<Node> {
+        val (code, body) = call(Request.Builder().url("$base/api/tree").get())
+        if (code != 200) failFor(code, "ツリー取得")
+        val arr = JSONObject(body).getJSONArray("nodes")
+        return (0 until arr.length()).map {
+            val n = arr.getJSONObject(it)
+            Node(n.getString("id"), n.optString("kind"), n.optString("title"), n.optString("parentId").takeIf { p -> p.isNotEmpty() && p != "null" }, n.opt("revision")?.toString().orEmpty())
+        }
+    }
+
+    private fun sectionId(nodes: List<Node> = tree()): String {
+        val notebook = nodes.firstOrNull { it.kind == "notebook" && it.title == NOTEBOOK }
+            ?: throw MemoriaException("memoria にノートブック「$NOTEBOOK」がありません", false)
+        return nodes.firstOrNull { it.kind == "section" && it.title == SECTION && it.parentId == notebook.id }?.id
+            ?: throw MemoriaException("ノートブック「$NOTEBOOK」にセクション「$SECTION」がありません", false)
+    }
+
+    /**
+     * Creates the note, or replaces its body when a note with the same title already exists in the
+     * section (the server has no duplicate detection). [createdAtIso] sets the creation date.
+     */
+    fun upsertNote(title: String, html: String, createdAtIso: String) {
+        val nodes = tree()
+        val section = sectionId(nodes)
+        val safeTitle = title.take(200)
+        val existing = nodes.firstOrNull { it.kind == "note" && it.parentId == section && it.title == safeTitle }
+        if (existing != null) {
+            patch(existing.id, existing.revision, JSONObject().put("html", html))
+            return
+        }
+        val create = JSONObject().put("kind", "note").put("title", safeTitle).put("parentId", section).put("html", html)
+        val (code, body) = call(Request.Builder().url("$base/api/nodes").post(create.toString().toRequestBody(json)))
+        if (code != 201) failFor(code, "ノート作成")
+        val node = JSONObject(body).getJSONObject("node")
+        // Backdate to the recording time. Failing here must not lose the note that already exists.
+        try {
+            patch(node.getString("id"), node.opt("revision").toString(), JSONObject().put("createdAt", createdAtIso))
+        } catch (_: MemoriaException) {
+        }
+    }
+
+    private fun patch(id: String, revision: String, body: JSONObject) {
+        var rev = revision
+        repeat(3) {
+            val (code, resp) = call(
+                Request.Builder().url("$base/api/nodes/$id").patch(body.toString().toRequestBody(json)),
+                ifMatch = rev,
+            )
+            when (code) {
+                200 -> return
+                409 -> rev = JSONObject(resp).optJSONObject("node")?.opt("revision")?.toString() ?: refetchRevision(id)
+                else -> failFor(code, "ノート更新")
+            }
+        }
+        throw MemoriaException("memoria: 更新が競合し続けました(409)", true)
+    }
+
+    private fun refetchRevision(id: String): String {
+        val (code, body) = call(Request.Builder().url("$base/api/notes/$id").get())
+        if (code != 200) failFor(code, "ノート取得")
+        return JSONObject(body).getJSONObject("node").opt("revision").toString()
+    }
+
+    companion object {
+        const val NOTEBOOK = "limitlessPendant"
+        const val SECTION = "文字起こし"
+    }
+}

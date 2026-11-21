@@ -2,6 +2,7 @@ package com.friend.ios.limitless
 
 import com.friend.ios.ble.OmiBleManager
 import com.friend.ios.batch.LimitlessBatchAudioWriter
+import com.friend.ios.amuless.Transcriber
 
 import android.content.Context
 import android.os.PowerManager
@@ -124,6 +125,8 @@ class LimitlessFlashDrainEngine(
     private fun maybeRunCycle() {
         if (deviceAddress == null || phase != Phase.IDLE) return
         val now = System.currentTimeMillis()
+        // Recordings waiting from an earlier run (e.g. the server was unreachable): retry after the back-off.
+        if (Transcriber.shouldRetry(context, now)) Transcriber.kick(context)
         if (now < nextAttemptAtMs) return
         if (!DrainSchedule.isDue(context, now)) return
         runCycle()
@@ -211,6 +214,8 @@ class LimitlessFlashDrainEngine(
         if (state.newestFlashPage < state.oldestFlashPage || pageCount <= 0) {
             phase = Phase.IDLE
             DrainSchedule.markDone(context, "nothing_to_drain")
+            writer.stop("drain_done")
+            Transcriber.kick(context)
             releaseWakeLock()
             return
         }
@@ -296,6 +301,8 @@ class LimitlessFlashDrainEngine(
         setBoolPref("pendantDraining", false)
         if (reason == "caught_up") {
             DrainSchedule.markDone(context, "ok")
+            writer.stop("drain_done") // finalize the open .bin so it can be transcribed
+            Transcriber.kick(context)
         } else {
             nextAttemptAtMs = System.currentTimeMillis() + RETRY_BACKOFF_MS
             DrainSchedule.markFailed(context, reason)

@@ -19,9 +19,9 @@ import kotlin.math.abs
  *  - A new file starts when consecutive pages are more than [SESSION_GAP_MS] apart
  *    (the pendant wasn't recording in between) or after [MAX_AUDIO_SECONDS] of audio
  *    (frames/50 — opus_fs320 is 50 frames per second), mirroring the Omi 15-min cap.
- *  - The device marker is `omibatchlimitless`: the `omibatch` prefix keeps the Dart
- *    recordings scanner matching, and the `limitless` substring makes the backend tag
- *    the resulting conversation `source=limitless`.
+ *  - The device marker is `amulessbatchlimitless`. (omi's backend used the `limitless`
+ *    substring to tag the conversation source; Amuless only needs a stable file name that
+ *    [com.friend.ios.amuless.RecordingFiles] matches.)
  *
  * ACK safety: the drain engine must call [sync] (fsync barrier) and get `true` back
  * BEFORE ACKing pages to the pendant — an ACK deletes the pendant's copy, so bytes
@@ -30,7 +30,7 @@ import kotlin.math.abs
 class LimitlessBatchAudioWriter(context: Context) : BaseBatchAudioWriter(context, TAG, "audio_${DEVICE_MARKER}_") {
     companion object {
         private const val TAG = "OmiBle.LimitlessWriter"
-        const val DEVICE_MARKER = "omibatchlimitless"
+        const val DEVICE_MARKER = "amulessbatchlimitless"
         private const val SESSION_GAP_MS = 120_000L // >120s between page timestamps = new session
         private const val MAX_AUDIO_SECONDS = 900L // 15 min of audio per file
         private const val FRAMES_PER_SECOND = 50L // opus_fs320 = 20 ms frames

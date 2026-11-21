@@ -5,6 +5,12 @@ import androidx.annotation.NonNull
 import com.friend.ios.ble.BleHostApiImpl
 import com.friend.ios.ble.OmiBleForegroundService
 import com.friend.ios.ble.OmiBleManager
+import android.os.Handler
+import android.os.Looper
+import com.friend.ios.amuless.AmulessSettings
+import com.friend.ios.amuless.MemoriaClient
+import com.friend.ios.amuless.Transcriber
+import com.friend.ios.amuless.WhisperClient
 import com.friend.ios.limitless.DrainSchedule
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -48,8 +54,54 @@ class MainActivity : FlutterActivity() {
                     OmiBleForegroundService.instance?.drainTick()
                     result.success(OmiBleForegroundService.instance != null)
                 }
+                "getSettings" -> {
+                    val ctx = applicationContext
+                    result.success(
+                        mapOf(
+                            "whisperUrl" to AmulessSettings.whisperUrl(ctx),
+                            "whisperModel" to AmulessSettings.whisperModel(ctx),
+                            "memoriaUrl" to AmulessSettings.memoriaUrl(ctx),
+                            "hasToken" to AmulessSettings.hasToken(ctx),
+                        ),
+                    )
+                }
+                "saveSettings" -> {
+                    AmulessSettings.save(
+                        applicationContext,
+                        call.argument<String>("whisperUrl"),
+                        call.argument<String>("whisperModel"),
+                        call.argument<String>("memoriaUrl"),
+                        call.argument<String>("token"),
+                    )
+                    result.success(null)
+                }
+                "testConnections" -> {
+                    val ctx = applicationContext
+                    val main = Handler(Looper.getMainLooper())
+                    Thread {
+                        val msgs = ArrayList<String>()
+                        val wUrl = AmulessSettings.whisperUrl(ctx)
+                        msgs.add(
+                            if (wUrl.isEmpty()) "Whisper: URL が未入力です"
+                            else "Whisper: " + (WhisperClient(wUrl, AmulessSettings.whisperModel(ctx)).ping() ?: "OK"),
+                        )
+                        val mUrl = AmulessSettings.memoriaUrl(ctx)
+                        val token = AmulessSettings.token(ctx)
+                        msgs.add(
+                            if (mUrl.isEmpty()) "memoria: URL が未入力です"
+                            else if (token == null) "memoria: トークンが未入力です"
+                            else "memoria: " + (MemoriaClient(mUrl, token).check() ?: "OK(ノートブックとセクションを確認)"),
+                        )
+                        main.post { result.success(msgs) }
+                    }.start()
+                }
+                "transcribeNow" -> {
+                    Transcriber.kick(applicationContext, manual = true)
+                    result.success(null)
+                }
                 "status" -> {
                     val ctx = applicationContext
+                    val tr = Transcriber.state(ctx)
                     val flutterPrefs = ctx.getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
                     result.success(
                         mapOf(
@@ -61,6 +113,11 @@ class MainActivity : FlutterActivity() {
                             "draining" to flutterPrefs.getBoolean("flutter.pendantDraining", false),
                             "pagesStored" to (flutterPrefs.all["flutter.pendantPagesStored"] as? Number)?.toLong(),
                             "serviceRunning" to (OmiBleForegroundService.instance != null),
+                            "transcribing" to tr.running,
+                            "transcribeResult" to tr.result,
+                            "transcribeError" to tr.error,
+                            "transcribeAt" to tr.at,
+                            "pendingFiles" to tr.pending,
                         ),
                     )
                 }

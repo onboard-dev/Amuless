@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'ble/pendant_ble.dart';
 import 'drain/drain_schedule.dart';
+import 'settings_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -106,6 +107,51 @@ class _HomePageState extends State<HomePage> {
         _ => '失敗($r)',
       };
 
+  String _transcribeLabel(DrainStatus d) {
+    if (d.transcribing) return '文字起こし中…';
+    final at = d.transcribeAt;
+    final when = at == null
+        ? ''
+        : '${at.month}/${at.day} ${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')} ';
+    final what = switch (d.transcribeResult) {
+      'ok' => 'memoria に保存しました',
+      'no_speech' => '話し声なし',
+      'not_configured' => '設定が未入力です',
+      'whisper_failed' => '文字起こしに失敗(自動で再試行)',
+      'memoria_failed' => 'memoria への保存に失敗',
+      'error' => 'エラー',
+      _ => '',
+    };
+    return when + what;
+  }
+
+  Widget _transcribeCard() {
+    final d = drain;
+    if (d == null) return const SizedBox.shrink();
+    final label = _transcribeLabel(d);
+    return Card(
+      child: ListTile(
+        leading: Icon(d.transcribing ? Icons.hourglass_top : Icons.notes),
+        title: const Text('文字起こし → memoria'),
+        subtitle: Text([
+          if (label.isNotEmpty) label,
+          if (d.transcribeError.isNotEmpty) d.transcribeError,
+          '待機中の録音: ${d.pendingFiles} 件',
+        ].join('\n')),
+        isThreeLine: d.transcribeError.isNotEmpty,
+        trailing: TextButton(
+          onPressed: d.transcribing
+              ? null
+              : () async {
+                  await DrainSchedule.transcribeNow();
+                  await _pollStatus();
+                },
+          child: const Text('今すぐ'),
+        ),
+      ),
+    );
+  }
+
   Widget _drainCard() {
     final d = drain;
     if (d == null) return const SizedBox.shrink();
@@ -155,7 +201,13 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final paired = ble.pendantId != null;
     return Scaffold(
-      appBar: AppBar(title: const Text('Amuless')),
+      appBar: AppBar(title: const Text('Amuless'), actions: [
+        IconButton(
+          icon: const Icon(Icons.settings),
+          tooltip: '設定',
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
+        ),
+      ]),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -168,6 +220,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           if (paired) _drainCard(),
+          if (paired) _transcribeCard(),
           if (ble.lastError != null) Text(ble.lastError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           if (!paired) ...[
             const SizedBox(height: 8),

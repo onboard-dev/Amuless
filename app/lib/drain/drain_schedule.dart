@@ -75,13 +75,32 @@ class DrainSchedule {
       AppSettings.fromMap((await _channel.invokeMapMethod<Object?, Object?>('getSettings'))!);
 
   /// [token]: null keeps the stored token, empty string clears it.
-  static Future<void> saveSettings({String? whisperUrl, String? whisperModel, String? memoriaUrl, String? token}) =>
+  static Future<void> saveSettings({
+    String? whisperUrl,
+    String? whisperModel,
+    String? memoriaUrl,
+    String? token,
+    String? notebookId,
+    String? notebookTitle,
+  }) =>
       _channel.invokeMethod<void>('saveSettings', {
         'whisperUrl': whisperUrl,
         'whisperModel': whisperModel,
         'memoriaUrl': memoriaUrl,
         'token': token,
+        'notebookId': notebookId,
+        'notebookTitle': notebookTitle,
       });
+
+  /// Notebooks on the Memoria server (needs the URL and token saved first). Throws a message string on failure.
+  static Future<List<Notebook>> listNotebooks() async {
+    final m = await _channel.invokeMapMethod<Object?, Object?>('listNotebooks');
+    final error = m?['error'] as String?;
+    if (error != null) throw error;
+    return ((m?['notebooks'] as List?) ?? const [])
+        .map((e) => Notebook(id: (e as Map)['id'] as String, title: e['title'] as String))
+        .toList();
+  }
 
   static Future<List<String>> testConnections() async =>
       ((await _channel.invokeListMethod<String>('testConnections')) ?? const <String>[]);
@@ -92,16 +111,33 @@ class DrainSchedule {
 
 /// Transcription / Memoria settings. The Memoria token is never returned to Dart, only whether one is stored.
 class AppSettings {
-  const AppSettings({required this.whisperUrl, required this.whisperModel, required this.memoriaUrl, required this.hasToken});
+  const AppSettings({
+    required this.whisperUrl,
+    required this.whisperModel,
+    required this.memoriaUrl,
+    required this.hasToken,
+    required this.notebookId,
+    required this.notebookTitle,
+  });
   final String whisperUrl;
   final String whisperModel;
   final String memoriaUrl;
   final bool hasToken;
+  final String notebookId;
+  final String notebookTitle;
 
   factory AppSettings.fromMap(Map<Object?, Object?> m) => AppSettings(
         whisperUrl: (m['whisperUrl'] as String?) ?? '',
         whisperModel: (m['whisperModel'] as String?) ?? '',
         memoriaUrl: (m['memoriaUrl'] as String?) ?? '',
         hasToken: m['hasToken'] == true,
+        notebookId: (m['notebookId'] as String?) ?? '',
+        notebookTitle: (m['notebookTitle'] as String?) ?? '',
       );
+}
+
+class Notebook {
+  const Notebook({required this.id, required this.title});
+  final String id;
+  final String title;
 }

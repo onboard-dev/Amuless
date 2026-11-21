@@ -12,12 +12,12 @@ import java.util.concurrent.TimeUnit
 class MemoriaException(message: String, val retryable: Boolean) : IOException(message)
 
 /**
- * Posts transcripts to Memoria (notebook "limitlessPendant" > section "文字起こし").
+ * Posts transcripts to Memoria: the notebook chosen in the settings screen > section "文字起こし".
  *
  * The token is only ever put in the Authorization header; it is not logged and does not appear in
  * exception messages.
  */
-class MemoriaClient(baseUrl: String, private val token: String) {
+class MemoriaClient(baseUrl: String, private val token: String, private val notebookId: String = "") {
     private val base = baseUrl.trimEnd('/')
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -62,11 +62,16 @@ class MemoriaClient(baseUrl: String, private val token: String) {
         }
     }
 
+    /** All notebooks as (id, title), for the picker in the settings screen. */
+    fun notebooks(): List<Pair<String, String>> =
+        tree().filter { it.kind == "notebook" }.map { it.id to it.title }.sortedBy { it.second.lowercase() }
+
     private fun sectionId(nodes: List<Node> = tree()): String {
-        val notebook = nodes.firstOrNull { it.kind == "notebook" && it.title == NOTEBOOK }
-            ?: throw MemoriaException("memoria にノートブック「$NOTEBOOK」がありません", false)
+        if (notebookId.isEmpty()) throw MemoriaException("memoria のノートブックが未選択です(設定画面で選んでください)", false)
+        val notebook = nodes.firstOrNull { it.kind == "notebook" && it.id == notebookId }
+            ?: throw MemoriaException("選択したノートブックが memoria にありません(削除された場合は、設定画面で選び直してください)", false)
         return nodes.firstOrNull { it.kind == "section" && it.title == SECTION && it.parentId == notebook.id }?.id
-            ?: throw MemoriaException("ノートブック「$NOTEBOOK」にセクション「$SECTION」がありません", false)
+            ?: throw MemoriaException("ノートブック「${notebook.title}」にセクション「$SECTION」がありません", false)
     }
 
     /**
@@ -116,7 +121,6 @@ class MemoriaClient(baseUrl: String, private val token: String) {
     }
 
     companion object {
-        const val NOTEBOOK = "limitlessPendant"
         const val SECTION = "文字起こし"
     }
 }

@@ -62,6 +62,8 @@ class MainActivity : FlutterActivity() {
                             "whisperModel" to AmulessSettings.whisperModel(ctx),
                             "memoriaUrl" to AmulessSettings.memoriaUrl(ctx),
                             "hasToken" to AmulessSettings.hasToken(ctx),
+                            "notebookId" to AmulessSettings.notebookId(ctx),
+                            "notebookTitle" to AmulessSettings.notebookTitle(ctx),
                         ),
                     )
                 }
@@ -72,6 +74,8 @@ class MainActivity : FlutterActivity() {
                         call.argument<String>("whisperModel"),
                         call.argument<String>("memoriaUrl"),
                         call.argument<String>("token"),
+                        call.argument<String>("notebookId"),
+                        call.argument<String>("notebookTitle"),
                     )
                     result.success(null)
                 }
@@ -90,9 +94,25 @@ class MainActivity : FlutterActivity() {
                         msgs.add(
                             if (mUrl.isEmpty()) "memoria: URL が未入力です"
                             else if (token == null) "memoria: トークンが未入力です"
-                            else "memoria: " + (MemoriaClient(mUrl, token).check() ?: "OK(ノートブックとセクションを確認)"),
+                            else "memoria: " + (MemoriaClient(mUrl, token, AmulessSettings.notebookId(ctx)).check() ?: "OK(ノートブック「${AmulessSettings.notebookTitle(ctx)}」とセクションを確認)"),
                         )
                         main.post { result.success(msgs) }
+                    }.start()
+                }
+                "listNotebooks" -> {
+                    val ctx = applicationContext
+                    val main = Handler(Looper.getMainLooper())
+                    Thread {
+                        val url = AmulessSettings.memoriaUrl(ctx)
+                        val token = AmulessSettings.token(ctx)
+                        val reply: Map<String, Any?> = if (url.isEmpty() || token == null) {
+                            mapOf("error" to "先に memoria の URL とトークンを入力して保存してください")
+                        } else try {
+                            mapOf("notebooks" to MemoriaClient(url, token).notebooks().map { mapOf("id" to it.first, "title" to it.second) })
+                        } catch (e: com.friend.ios.amuless.MemoriaException) {
+                            mapOf("error" to e.message)
+                        }
+                        main.post { result.success(reply) }
                     }.start()
                 }
                 "transcribeNow" -> {

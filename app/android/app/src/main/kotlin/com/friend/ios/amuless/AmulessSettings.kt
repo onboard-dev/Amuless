@@ -19,6 +19,8 @@ object AmulessSettings {
     private const val K_WHISPER_MODEL = "whisper_model"
     private const val K_MEMORIA_URL = "memoria_url"
     private const val K_TOKEN = "memoria_token"
+    private const val K_NOTEBOOK_ID = "memoria_notebook_id"
+    private const val K_NOTEBOOK_TITLE = "memoria_notebook_title"
 
     const val DEFAULT_MODEL = "mlx-community/whisper-large-v3-turbo-asr-fp16"
 
@@ -40,6 +42,12 @@ object AmulessSettings {
     /** e.g. https://host:8443 (no trailing slash). Empty when not set. */
     fun memoriaUrl(context: Context): String = plain(context).getString(K_MEMORIA_URL, "").orEmpty().trim().trimEnd('/')
 
+    /** Memoria notebook chosen in the settings screen, remembered by id so a rename does not break it. */
+    fun notebookId(context: Context): String = plain(context).getString(K_NOTEBOOK_ID, "").orEmpty()
+
+    /** Title at the time it was chosen; display only. */
+    fun notebookTitle(context: Context): String = plain(context).getString(K_NOTEBOOK_TITLE, "").orEmpty()
+
     fun token(context: Context): String? = try {
         secure(context).getString(K_TOKEN, null)?.takeIf { it.isNotBlank() }
     } catch (e: Exception) {
@@ -50,11 +58,21 @@ object AmulessSettings {
     fun hasToken(context: Context): Boolean = token(context) != null
 
     /** [token]: null keeps the stored one, "" clears it. */
-    fun save(context: Context, whisperUrl: String?, whisperModel: String?, memoriaUrl: String?, token: String?) {
+    fun save(
+        context: Context,
+        whisperUrl: String?,
+        whisperModel: String?,
+        memoriaUrl: String?,
+        token: String?,
+        notebookId: String? = null,
+        notebookTitle: String? = null,
+    ) {
         val e = plain(context).edit()
         whisperUrl?.let { e.putString(K_WHISPER_URL, it.trim().trimEnd('/')) }
         whisperModel?.let { e.putString(K_WHISPER_MODEL, it.trim()) }
         memoriaUrl?.let { e.putString(K_MEMORIA_URL, it.trim().trimEnd('/')) }
+        notebookId?.let { e.putString(K_NOTEBOOK_ID, it.trim()) }
+        notebookTitle?.let { e.putString(K_NOTEBOOK_TITLE, it.trim()) }
         e.apply()
         if (token != null) {
             val s = secure(context).edit()
@@ -64,5 +82,6 @@ object AmulessSettings {
     }
 
     fun isConfigured(context: Context): Boolean =
-        whisperUrl(context).isNotEmpty() && memoriaUrl(context).isNotEmpty() && hasToken(context)
+        whisperUrl(context).isNotEmpty() && memoriaUrl(context).isNotEmpty() && hasToken(context) &&
+            notebookId(context).isNotEmpty()
 }

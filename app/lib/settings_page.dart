@@ -16,6 +16,9 @@ class _SettingsPageState extends State<SettingsPage> {
   final _memoriaUrl = TextEditingController();
   final _token = TextEditingController();
   bool _hasToken = false;
+  String _notebookId = '';
+  String _notebookTitle = '';
+  bool _loadingNotebooks = false;
   bool _loaded = false;
   bool _testing = false;
   List<String> _results = const [];
@@ -43,6 +46,8 @@ class _SettingsPageState extends State<SettingsPage> {
       _model.text = s.whisperModel;
       _memoriaUrl.text = s.memoriaUrl;
       _hasToken = s.hasToken;
+      _notebookId = s.notebookId;
+      _notebookTitle = s.notebookTitle;
       _loaded = true;
     });
   }
@@ -55,6 +60,42 @@ class _SettingsPageState extends State<SettingsPage> {
       token: _token.text.isEmpty ? null : _token.text,
     );
     _token.clear();
+    await _load();
+  }
+
+  Future<void> _pickNotebook() async {
+    setState(() => _loadingNotebooks = true);
+    await _save(); // the list needs the URL and token that are on screen
+    List<Notebook> items = const [];
+    String? error;
+    try {
+      items = await DrainSchedule.listNotebooks();
+    } catch (e) {
+      error = '$e';
+    }
+    if (!mounted) return;
+    setState(() => _loadingNotebooks = false);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+    final chosen = await showDialog<Notebook>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('保存先のノートブック'),
+        children: [
+          if (items.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('ノートブックがありません')),
+          for (final n in items)
+            ListTile(
+              leading: Icon(n.id == _notebookId ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+              title: Text(n.title),
+              onTap: () => Navigator.of(ctx).pop(n),
+            ),
+        ],
+      ),
+    );
+    if (chosen == null) return;
+    await DrainSchedule.saveSettings(notebookId: chosen.id, notebookTitle: chosen.title);
     await _load();
   }
 
@@ -126,6 +167,20 @@ class _SettingsPageState extends State<SettingsPage> {
                   suffixIcon: _hasToken
                       ? IconButton(onPressed: _clearToken, icon: const Icon(Icons.delete_outline), tooltip: 'トークンを削除')
                       : null,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  leading: const Icon(Icons.book_outlined),
+                  title: const Text('保存先のノートブック'),
+                  subtitle: Text(_notebookId.isEmpty ? '未選択(タップして選ぶ)' : '$_notebookTitle\nセクション「文字起こし」に保存します'),
+                  isThreeLine: _notebookId.isNotEmpty,
+                  trailing: _loadingNotebooks
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.chevron_right),
+                  onTap: _loadingNotebooks ? null : _pickNotebook,
                 ),
               ),
               const SizedBox(height: 24),

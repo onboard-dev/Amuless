@@ -101,11 +101,11 @@ object Transcriber {
         val files = RecordingFiles.pending(dir)
         if (files.isEmpty()) return
         if (!AmulessSettings.isConfigured(context)) {
-            record(context, "not_configured", "設定(Whisper の URL、memoria の URL とトークン)が未入力です")
+            record(context, "not_configured", "設定(Whisper の URL、memoria の URL・トークン・ノートブック)が未入力です")
             return
         }
         val whisper = WhisperClient(AmulessSettings.whisperUrl(context), AmulessSettings.whisperModel(context))
-        val memoria = MemoriaClient(AmulessSettings.memoriaUrl(context), AmulessSettings.token(context)!!)
+        val memoria = MemoriaClient(AmulessSettings.memoriaUrl(context), AmulessSettings.token(context)!!, AmulessSettings.notebookId(context))
 
         // 1) transcribe every file (cached per file)
         val all = ArrayList<Pair<Long, List<Segment>>>() // startSec to segments

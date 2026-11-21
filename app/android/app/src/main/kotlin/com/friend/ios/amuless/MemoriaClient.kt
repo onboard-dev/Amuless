@@ -26,7 +26,17 @@ class MemoriaClient(baseUrl: String, private val token: String, private val note
         .build()
     private val json = "application/json; charset=utf-8".toMediaType()
 
-    private data class Node(val id: String, val kind: String, val title: String, val parentId: String?, val revision: String)
+    private data class Node(
+        val id: String,
+        val kind: String,
+        val title: String,
+        val parentId: String?,
+        val revision: String,
+        val createdAt: String = "",
+    )
+
+    /** A note in the transcript section, for the in-app viewer. */
+    data class NoteInfo(val id: String, val title: String, val createdAt: String)
 
     /** Verifies token + notebook + section. Returns null when ok, else a message for the user. */
     fun check(): String? = try {
@@ -58,8 +68,25 @@ class MemoriaClient(baseUrl: String, private val token: String, private val note
         val arr = JSONObject(body).getJSONArray("nodes")
         return (0 until arr.length()).map {
             val n = arr.getJSONObject(it)
-            Node(n.getString("id"), n.optString("kind"), n.optString("title"), n.optString("parentId").takeIf { p -> p.isNotEmpty() && p != "null" }, n.opt("revision")?.toString().orEmpty())
+            Node(n.getString("id"), n.optString("kind"), n.optString("title"), n.optString("parentId").takeIf { p -> p.isNotEmpty() && p != "null" }, n.opt("revision")?.toString().orEmpty(), n.optString("createdAt"))
         }
+    }
+
+    /** Newest notes in the chosen notebook's transcript section, newest first. */
+    fun recentNotes(limit: Int = 40): List<NoteInfo> {
+        val nodes = tree()
+        val section = sectionId(nodes)
+        return nodes.filter { it.kind == "note" && it.parentId == section }
+            .map { NoteInfo(it.id, it.title, it.createdAt) }
+            .sortedWith(compareByDescending<NoteInfo> { it.createdAt }.thenByDescending { it.title })
+            .take(limit)
+    }
+
+    /** The note body as stored (HTML). */
+    fun noteHtml(id: String): String {
+        val (code, body) = call(Request.Builder().url("$base/api/notes/$id").get())
+        if (code != 200) failFor(code, "ノート取得")
+        return JSONObject(body).optString("html")
     }
 
     /** All notebooks as (id, title), for the picker in the settings screen. */

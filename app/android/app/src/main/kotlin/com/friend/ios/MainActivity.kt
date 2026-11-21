@@ -115,6 +115,26 @@ class MainActivity : FlutterActivity() {
                         main.post { result.success(reply) }
                     }.start()
                 }
+                "listNotes", "readNote" -> {
+                    val ctx = applicationContext
+                    val main = Handler(Looper.getMainLooper())
+                    val noteId = call.argument<String>("id")
+                    val isList = call.method == "listNotes"
+                    Thread {
+                        val url = AmulessSettings.memoriaUrl(ctx)
+                        val token = AmulessSettings.token(ctx)
+                        val reply: Map<String, Any?> = if (url.isEmpty() || token == null) {
+                            mapOf("error" to "memoria の URL とトークンを設定してください")
+                        } else try {
+                            val client = MemoriaClient(url, token, AmulessSettings.notebookId(ctx))
+                            if (isList) mapOf("notes" to client.recentNotes().map { mapOf("id" to it.id, "title" to it.title, "createdAt" to it.createdAt) })
+                            else mapOf("html" to client.noteHtml(noteId.orEmpty()))
+                        } catch (e: com.friend.ios.amuless.MemoriaException) {
+                            mapOf("error" to e.message)
+                        }
+                        main.post { result.success(reply) }
+                    }.start()
+                }
                 "transcribeNow" -> {
                     Transcriber.kick(applicationContext, manual = true)
                     result.success(null)

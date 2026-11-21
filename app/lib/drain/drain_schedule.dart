@@ -108,6 +108,24 @@ class DrainSchedule {
         .toList();
   }
 
+  /// Newest notes in the chosen Memoria notebook. Throws a message string on failure.
+  static Future<List<NoteSummary>> listNotes() async {
+    final m = await _channel.invokeMapMethod<Object?, Object?>('listNotes');
+    final error = m?['error'] as String?;
+    if (error != null) throw error;
+    return ((m?['notes'] as List?) ?? const [])
+        .map((e) => NoteSummary(id: (e as Map)['id'] as String, title: e['title'] as String, createdAt: (e['createdAt'] as String?) ?? ''))
+        .toList();
+  }
+
+  /// The stored HTML of one note. Throws a message string on failure.
+  static Future<String> readNote(String id) async {
+    final m = await _channel.invokeMapMethod<Object?, Object?>('readNote', {'id': id});
+    final error = m?['error'] as String?;
+    if (error != null) throw error;
+    return (m?['html'] as String?) ?? '';
+  }
+
   static Future<List<String>> testConnections() async =>
       ((await _channel.invokeListMethod<String>('testConnections')) ?? const <String>[]);
 
@@ -140,6 +158,13 @@ class AppSettings {
         notebookId: (m['notebookId'] as String?) ?? '',
         notebookTitle: (m['notebookTitle'] as String?) ?? '',
       );
+}
+
+class NoteSummary {
+  const NoteSummary({required this.id, required this.title, required this.createdAt});
+  final String id;
+  final String title;
+  final String createdAt;
 }
 
 class Notebook {

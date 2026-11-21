@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'ble/pendant_ble.dart';
 import 'drain/drain_schedule.dart';
+import 'notes_page.dart';
 import 'settings_page.dart';
 
 Future<void> main() async {
@@ -211,6 +212,11 @@ class _HomePageState extends State<HomePage> {
     final paired = ble.pendantId != null;
     return Scaffold(
       appBar: AppBar(title: const Text('Amuless'), actions: [
+        IconButton(
+          icon: const Icon(Icons.article_outlined),
+          tooltip: '保存したノート',
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotesPage())),
+        ),
         IconButton(
           icon: const Icon(Icons.settings),
           tooltip: '設定',

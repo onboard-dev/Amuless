@@ -1,3 +1,0 @@
-/target
-# Binary crate: the lockfile is committed (CI builds with --locked).
-!Cargo.lock

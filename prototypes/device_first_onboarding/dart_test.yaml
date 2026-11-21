@@ -1,3 +1,0 @@
-tags:
-  screenshots:
-    description: Renders review screenshots to test/goldens/. Run with --update-goldens.

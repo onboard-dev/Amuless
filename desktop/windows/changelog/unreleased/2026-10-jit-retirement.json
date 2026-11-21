@@ -1,5 +1,0 @@
-{
-  "changes": [
-    "Retired just-in-time memory notifications and ledger mirror controls. Existing saved memories and account exports remain available."
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "admission": {
-    "rows": 16,
-    "drainers": 8,
-    "durable": true,
-    "drain_concurrency": 1
-  }
-}

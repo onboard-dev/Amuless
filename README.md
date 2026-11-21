@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/amuless-icon.png" width="128" alt="Amuless"></p>
+
 # Amuless
 
 Amulet + Limitless = **Amuless**。

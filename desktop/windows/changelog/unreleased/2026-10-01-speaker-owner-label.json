@@ -1,5 +1,0 @@
-{
-  "changes": [
-    "Assigning a speaker to yourself in a conversation transcript now saves correctly, so the 'You' label and voice learning stick instead of silently reverting."
-  ]
-}

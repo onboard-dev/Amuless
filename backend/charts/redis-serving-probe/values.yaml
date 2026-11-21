@@ -1,4 +1,0 @@
-# Release supplies the reviewed image digest and verified IPs.
-image: ""
-redisAddresses: []
-dnsResolverAddresses: []

@@ -1,3 +1,0 @@
-description: Development-only deferred-init hang witness
-compatible: "omi,safe-mode-fault"
-include: base.yaml

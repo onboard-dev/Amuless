@@ -1,6 +1,0 @@
-bin/
-.verify/
-/archcheck
-/jobd
-firestore-debug.log
-ui-debug.log

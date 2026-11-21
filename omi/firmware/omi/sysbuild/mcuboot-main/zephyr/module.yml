@@ -1,3 +1,0 @@
-name: cv1_mcuboot_main
-build:
-  cmake: .

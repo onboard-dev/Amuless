@@ -1,5 +1,0 @@
-{
-  "changes": [
-    "Fixed: chat history could keep showing yesterday's chats under Today if the history list stayed open past midnight."
-  ]
-}

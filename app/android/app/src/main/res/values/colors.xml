@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="splash_background">#5B4BE8</color>
+    <drawable name="launch_background">@color/splash_background</drawable>
+</resources>

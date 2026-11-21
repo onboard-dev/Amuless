@@ -60,6 +60,10 @@
             </intent-filter>
         </service>
 
+        <receiver
+            android:name="com.friend.ios.limitless.DrainAlarmReceiver"
+            android:exported="false" />
+
         <service
             android:name="com.friend.ios.ble.OmiBleForegroundService"
             android:foregroundServiceType="connectedDevice"

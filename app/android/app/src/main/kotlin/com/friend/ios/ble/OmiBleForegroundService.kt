@@ -209,6 +209,9 @@ class OmiBleForegroundService : Service() {
     private val limitlessBatchWriter by lazy { LimitlessBatchAudioWriter(applicationContext) }
     private val limitlessDrainEngine by lazy { LimitlessFlashDrainEngine(applicationContext, limitlessBatchWriter) }
 
+    /** Amuless: re-check whether a pendant drain is due (daily alarm / "drain now"). */
+    fun drainTick() = limitlessDrainEngine.tick()
+
     // ── Connection listener — receives GATT events from OmiBleManager ──
 
     private val connectionListener = object : OmiBleManager.BleConnectionListener {

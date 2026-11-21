@@ -4,6 +4,7 @@ import com.friend.ios.ble.OmiBleManager
 import com.friend.ios.batch.LimitlessBatchAudioWriter
 
 import android.content.Context
+import android.os.PowerManager
 import android.util.Log
 import org.json.JSONObject
 import java.util.Locale
@@ -33,7 +34,10 @@ class LimitlessFlashDrainEngine(
     companion object {
         private const val TAG = "OmiBle.LimitlessDrain"
         private const val FLUTTER_PREFS = "FlutterSharedPreferences"
-        private const val CYCLE_MS = 90_000L
+        // Amuless: tick once a minute and drain only when DrainSchedule says one is due.
+        private const val TICK_MS = 60_000L
+        private const val RETRY_BACKOFF_MS = 10 * 60_000L
+        private const val WAKELOCK_MS = 15 * 60_000L
         private const val FIRST_CYCLE_DELAY_MS = 5_000L
         private const val STATUS_TIMEOUT_MS = 8_000L
         private const val STALL_MS = 30_000L
@@ -65,6 +69,8 @@ class LimitlessFlashDrainEngine(
     private var cycleTask: ScheduledFuture<*>? = null
     private var statusTimeoutTask: ScheduledFuture<*>? = null
     private var stallCheckTask: ScheduledFuture<*>? = null
+    private var nextAttemptAtMs = 0L
+    private var wakeLock: PowerManager.WakeLock? = null
 
     fun onDeviceReady(address: String) {
         executor.execute {
@@ -73,7 +79,8 @@ class LimitlessFlashDrainEngine(
             deviceAddress = address
             if (phase != Phase.DRAINING) setBoolPref("pendantDraining", false)
             cycleTask?.cancel(false)
-            cycleTask = executor.scheduleWithFixedDelay({ runCycle() }, FIRST_CYCLE_DELAY_MS, CYCLE_MS, TimeUnit.MILLISECONDS)
+            cycleTask = executor.scheduleWithFixedDelay({ maybeRunCycle() }, FIRST_CYCLE_DELAY_MS, TICK_MS, TimeUnit.MILLISECONDS)
+            DrainSchedule.arm(context)
         }
     }
 
@@ -109,6 +116,36 @@ class LimitlessFlashDrainEngine(
 
     // ── Cycle (executor) ──
 
+    /** Called by the daily alarm and by "drain now": re-evaluate immediately. */
+    fun tick() {
+        executor.execute { maybeRunCycle() }
+    }
+
+    private fun maybeRunCycle() {
+        if (deviceAddress == null || phase != Phase.IDLE) return
+        val now = System.currentTimeMillis()
+        if (now < nextAttemptAtMs) return
+        if (!DrainSchedule.isDue(context, now)) return
+        runCycle()
+    }
+
+    private fun acquireWakeLock() {
+        try {
+            val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            val lock = wakeLock ?: pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "amuless:drain").also { wakeLock = it }
+            if (!lock.isHeld) lock.acquire(WAKELOCK_MS)
+        } catch (e: Exception) {
+            Log.w(TAG, "wake lock failed: ${e.message}")
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            wakeLock?.takeIf { it.isHeld }?.release()
+        } catch (_: Exception) {
+        }
+    }
+
     private fun runCycle() {
         val address = deviceAddress ?: return
         if (phase != Phase.IDLE) return
@@ -120,13 +157,17 @@ class LimitlessFlashDrainEngine(
         if (!config.deviceId.equals(address, ignoreCase = true)) return
 
         phase = Phase.AWAITING_STATUS
+        acquireWakeLock()
         write(address, LimitlessProtocol.encodeSetCurrentTime(messageIndex++, ++requestId, System.currentTimeMillis()))
         write(address, LimitlessProtocol.encodeGetDeviceStatus(messageIndex++, ++requestId))
         statusTimeoutTask?.cancel(false)
         statusTimeoutTask = executor.schedule({
             if (phase == Phase.AWAITING_STATUS) {
-                Log.w(TAG, "storage status timed out — retrying next cycle")
+                Log.w(TAG, "storage status timed out — retrying later")
                 phase = Phase.IDLE
+                nextAttemptAtMs = System.currentTimeMillis() + 2 * 60_000L
+                DrainSchedule.markFailed(context, "status_timeout")
+                releaseWakeLock()
             }
         }, STATUS_TIMEOUT_MS, TimeUnit.MILLISECONDS)
     }
@@ -169,6 +210,8 @@ class LimitlessFlashDrainEngine(
         val pageCount = state.newestFlashPage - state.oldestFlashPage + 1
         if (state.newestFlashPage < state.oldestFlashPage || pageCount <= 0) {
             phase = Phase.IDLE
+            DrainSchedule.markDone(context, "nothing_to_drain")
+            releaseWakeLock()
             return
         }
 
@@ -251,6 +294,13 @@ class LimitlessFlashDrainEngine(
         }
         phase = Phase.IDLE
         setBoolPref("pendantDraining", false)
+        if (reason == "caught_up") {
+            DrainSchedule.markDone(context, "ok")
+        } else {
+            nextAttemptAtMs = System.currentTimeMillis() + RETRY_BACKOFF_MS
+            DrainSchedule.markFailed(context, reason)
+        }
+        releaseWakeLock()
         Log.i(TAG, "drain finished ($reason): appended<=$lastAppendedPageIndex acked<=$lastAckedPageIndex end=$endPage")
     }
 
@@ -265,6 +315,7 @@ class LimitlessFlashDrainEngine(
             setBoolPref("pendantDraining", false)
         }
         phase = Phase.IDLE
+        releaseWakeLock()
     }
 
     // ── IO helpers ──

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'ble/pendant_ble.dart';
+import 'drain/drain_schedule.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,16 +37,21 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final ble = PendantBle.instance;
   List<FileSystemEntity> files = [];
+  DrainStatus? drain;
+  Timer? _poll;
 
   @override
   void initState() {
     super.initState();
     ble.addListener(_refresh);
     _start();
+    _pollStatus();
+    _poll = Timer.periodic(const Duration(seconds: 3), (_) => _pollStatus());
   }
 
   @override
   void dispose() {
+    _poll?.cancel();
     ble.removeListener(_refresh);
     super.dispose();
   }
@@ -61,6 +68,82 @@ class _HomePageState extends State<HomePage> {
     final list = dir.listSync().where((e) => e.path.endsWith('.bin')).toList()
       ..sort((a, b) => b.path.compareTo(a.path));
     if (mounted) setState(() => files = list);
+  }
+
+  Future<void> _pollStatus() async {
+    try {
+      final st = await DrainSchedule.status();
+      if (mounted) setState(() => drain = st);
+    } catch (_) {}
+    _loadFiles();
+  }
+
+  Future<void> _pickTime() async {
+    final d = drain;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: d?.hour ?? 2, minute: d?.minute ?? 0),
+      helpText: '毎日、音声を取り込む時刻',
+    );
+    if (picked == null) return;
+    await DrainSchedule.setTime(picked.hour, picked.minute);
+    await _pollStatus();
+  }
+
+  Future<void> _drainNow() async {
+    final started = await DrainSchedule.drainNow();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(started ? '取り込みを開始します' : 'ペンダントに接続したら取り込みます'),
+    ));
+    await _pollStatus();
+  }
+
+  String _resultLabel(String r) => switch (r) {
+        'ok' => '成功',
+        'nothing_to_drain' => '取り込む音声なし',
+        '' => '',
+        _ => '失敗($r)',
+      };
+
+  Widget _drainCard() {
+    final d = drain;
+    if (d == null) return const SizedBox.shrink();
+    final last = d.lastDoneAt;
+    final lastText = last == null
+        ? 'まだ取り込んでいません'
+        : '${last.month}/${last.day} ${last.hour.toString().padLeft(2, '0')}:${last.minute.toString().padLeft(2, '0')}'
+            ' ${_resultLabel(d.lastResult)}';
+    return Card(
+      child: Column(children: [
+        ListTile(
+          leading: const Icon(Icons.schedule),
+          title: Text('毎日 ${d.timeLabel} に取り込み'),
+          subtitle: Text([
+            '前回: $lastText',
+            if (d.pagesStored != null) 'ペンダント内の未取得: ${d.pagesStored} ページ',
+            if (d.draining) '取り込み中…',
+          ].join('\n')),
+          isThreeLine: d.pagesStored != null || d.draining,
+          trailing: TextButton(onPressed: _pickTime, child: const Text('時刻を変更')),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Row(children: [
+            FilledButton.tonalIcon(
+              onPressed: d.draining ? null : _drainNow,
+              icon: const Icon(Icons.download),
+              label: const Text('今すぐ取り込む'),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => Permission.ignoreBatteryOptimizations.request(),
+              child: const Text('電池の最適化を除外'),
+            ),
+          ]),
+        ),
+      ]),
+    );
   }
 
   void _refresh() {
@@ -84,6 +167,7 @@ class _HomePageState extends State<HomePage> {
               trailing: paired ? TextButton(onPressed: ble.forget, child: const Text('解除')) : null,
             ),
           ),
+          if (paired) _drainCard(),
           if (ble.lastError != null) Text(ble.lastError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           if (!paired) ...[
             const SizedBox(height: 8),

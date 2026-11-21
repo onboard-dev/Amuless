@@ -1,3 +1,0 @@
-{
-  "change": "Chat refreshes newly saved memory links and offers retry when a memory cannot be loaded, instead of incorrectly saying it is no longer available."
-}

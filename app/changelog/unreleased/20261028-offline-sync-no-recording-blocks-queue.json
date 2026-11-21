@@ -1,3 +1,0 @@
-{
-  "change": "Offline Sync no longer lets one very large recording hold up your smaller ones, and clearing recordings no longer brings them back while your Omi is disconnected"
-}

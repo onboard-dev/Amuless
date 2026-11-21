@@ -1,3 +1,0 @@
-{
-  "change": "A quiet room no longer shows a false \"No audio from pendant\" warning; the timer keeps running while your pendant listens in silence"
-}

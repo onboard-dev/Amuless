@@ -1,4 +1,0 @@
-{
-  "kind": "none",
-  "reason": "Regenerated wire DTO gains two optional, additive conversation fields; no app code reads them yet and nothing user-visible changes."
-}

@@ -1,3 +1,0 @@
-{
-  "change": "Home shows a single loading skeleton while it opens instead of a second Finishing up spinner, and loads its history in fewer requests."
-}

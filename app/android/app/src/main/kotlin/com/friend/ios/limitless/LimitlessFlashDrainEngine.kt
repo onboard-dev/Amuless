@@ -62,6 +62,8 @@ class LimitlessFlashDrainEngine(
     private var requestId = 0L
     private val fragmentBuffer = mutableMapOf<Int, MutableMap<Int, ByteArray>>()
     private var endPage = 0
+    private var startPage = 0
+    private var lastProgressPublishedAt = 0L
     private var maxSeenPageIndex = -1
     private var lastAppendedPageIndex = -1
     private var lastAckedPageIndex = -1
@@ -223,6 +225,8 @@ class LimitlessFlashDrainEngine(
         val address = deviceAddress ?: run { phase = Phase.IDLE; return }
         fragmentBuffer.clear()
         endPage = state.newestFlashPage
+        startPage = state.oldestFlashPage
+        DrainSchedule.setProgress(context, 0, pageCount)
         maxSeenPageIndex = -1
         lastAppendedPageIndex = -1
         lastAckedPageIndex = -1
@@ -254,6 +258,11 @@ class LimitlessFlashDrainEngine(
         }
         lastAppendedPageIndex = maxOf(lastAppendedPageIndex, index)
         maxSeenPageIndex = maxOf(maxSeenPageIndex, index)
+        val nowMs = System.currentTimeMillis()
+        if (nowMs - lastProgressPublishedAt > 1_000) {
+            lastProgressPublishedAt = nowMs
+            DrainSchedule.setProgress(context, (maxSeenPageIndex - startPage + 1).coerceAtLeast(0), endPage - startPage + 1)
+        }
         pagesSinceAck++
 
         if (pagesSinceAck >= ACK_EVERY_PAGES) {
@@ -299,6 +308,7 @@ class LimitlessFlashDrainEngine(
         }
         phase = Phase.IDLE
         setBoolPref("pendantDraining", false)
+        DrainSchedule.setProgress(context, 0, 0)
         if (reason == "caught_up") {
             DrainSchedule.markDone(context, "ok")
             writer.stop("drain_done") // finalize the open .bin so it can be transcribed
@@ -320,6 +330,7 @@ class LimitlessFlashDrainEngine(
         if (phase == Phase.DRAINING) {
             Log.i(TAG, "drain aborted ($reason): acked<=$lastAckedPageIndex")
             setBoolPref("pendantDraining", false)
+            DrainSchedule.setProgress(context, 0, 0)
         }
         phase = Phase.IDLE
         releaseWakeLock()

@@ -10,6 +10,8 @@ class DrainStatus {
     required this.due,
     required this.draining,
     required this.pagesStored,
+    required this.progressDone,
+    required this.progressTotal,
     required this.serviceRunning,
     required this.transcribing,
     required this.transcribeResult,
@@ -25,6 +27,8 @@ class DrainStatus {
   final bool due;
   final bool draining;
   final int? pagesStored;
+  final int progressDone;
+  final int progressTotal;
   final bool serviceRunning;
   final bool transcribing;
   final String transcribeResult;
@@ -44,6 +48,8 @@ class DrainStatus {
       due: m['due'] == true,
       draining: m['draining'] == true,
       pagesStored: (m['pagesStored'] as num?)?.toInt(),
+      progressDone: (m['progressDone'] as num?)?.toInt() ?? 0,
+      progressTotal: (m['progressTotal'] as num?)?.toInt() ?? 0,
       serviceRunning: m['serviceRunning'] == true,
       transcribing: m['transcribing'] == true,
       transcribeResult: (m['transcribeResult'] as String?) ?? '',

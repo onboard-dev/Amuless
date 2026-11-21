@@ -25,7 +25,6 @@ object OpusBinDecoder {
     private const val SAMPLE_RATE = 16_000
     private const val FRAME_US = 20_000L
     private const val MAX_PACKET = 4_000
-    private const val TIMEOUT_US = 10_000L
 
     /** Returns the decoded duration in milliseconds (0 when the file holds no audio). */
     fun decodeToWav(bin: File, wav: File): Long {
@@ -86,28 +85,32 @@ object OpusBinDecoder {
         val header = ByteArray(4)
         var packet = ByteArray(MAX_PACKET)
 
+        // Never block on one side while the other has work: feed every free input buffer, drain every
+        // ready output buffer, and only sleep briefly when neither moved.
         while (!outputDone) {
-            if (!inputDone) {
-                val index = codec.dequeueInputBuffer(TIMEOUT_US)
-                if (index >= 0) {
-                    val size = readPacket(input, header, packet)
-                    if (size == EOF) {
-                        codec.queueInputBuffer(index, 0, 0, pts, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                        inputDone = true
-                    } else if (size == SKIP) {
-                        codec.queueInputBuffer(index, 0, 0, pts, 0)
-                    } else {
-                        val buf = codec.getInputBuffer(index)!!
-                        buf.clear()
-                        buf.put(packet, 0, size)
-                        codec.queueInputBuffer(index, 0, size, pts, 0)
-                        pts += FRAME_US
-                    }
+            var progressed = false
+            while (!inputDone) {
+                val index = codec.dequeueInputBuffer(0)
+                if (index < 0) break
+                progressed = true
+                val size = readPacket(input, header, packet)
+                if (size == EOF) {
+                    codec.queueInputBuffer(index, 0, 0, pts, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                    inputDone = true
+                } else if (size == SKIP) {
+                    codec.queueInputBuffer(index, 0, 0, pts, 0)
+                } else {
+                    val buf = codec.getInputBuffer(index)!!
+                    buf.clear()
+                    buf.put(packet, 0, size)
+                    codec.queueInputBuffer(index, 0, size, pts, 0)
+                    pts += FRAME_US
                 }
             }
-            val out = codec.dequeueOutputBuffer(info, TIMEOUT_US)
-            when {
-                out >= 0 -> {
+            while (!outputDone) {
+                val out = codec.dequeueOutputBuffer(info, 0)
+                if (out >= 0) {
+                    progressed = true
                     if (info.size > 0) {
                         val buf = codec.getOutputBuffer(out)!!
                         buf.position(info.offset)
@@ -119,13 +122,16 @@ object OpusBinDecoder {
                     }
                     codec.releaseOutputBuffer(out, false)
                     if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
-                }
-                out == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                } else if (out == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    progressed = true
                     val f = codec.outputFormat
                     resampler.setInputRate(f.getInteger(MediaFormat.KEY_SAMPLE_RATE))
                     Log.i(TAG, "decoder output format: $f")
+                } else {
+                    break
                 }
             }
+            if (!progressed && !outputDone) Thread.sleep(2)
         }
     }
 

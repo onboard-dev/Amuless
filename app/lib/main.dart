@@ -167,19 +167,28 @@ class _HomePageState extends State<HomePage> {
           title: Text('毎日 ${d.timeLabel} に取り込み'),
           subtitle: Text([
             '前回: $lastText',
-            if (d.pagesStored != null) 'ペンダント内の未取得: ${d.pagesStored} ページ',
-            if (d.draining) '取り込み中…',
+            if (!d.draining && d.pagesStored != null) 'ペンダント内の未取得: ${d.pagesStored} ページ',
+            if (d.draining && d.progressTotal == 0) '取り込み準備中…',
+            if (d.draining && d.progressTotal > 0)
+              '取り込み中 ${d.progressDone}/${d.progressTotal} ページ'
+                  '(${(d.progressDone * 100 / d.progressTotal).clamp(0, 100).toStringAsFixed(0)}%、'
+                  '音声 約${(d.progressTotal * 1.4 / 60).round()}分)',
           ].join('\n')),
-          isThreeLine: d.pagesStored != null || d.draining,
+          isThreeLine: (!d.draining && d.pagesStored != null) || d.draining,
           trailing: TextButton(onPressed: _pickTime, child: const Text('時刻を変更')),
         ),
+        if (d.draining)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: LinearProgressIndicator(value: d.progressTotal > 0 ? d.progressDone / d.progressTotal : null),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Row(children: [
             FilledButton.tonalIcon(
               onPressed: d.draining ? null : _drainNow,
               icon: const Icon(Icons.download),
-              label: const Text('今すぐ取り込む'),
+              label: Text(d.draining ? '取り込み中…' : '今すぐ取り込む'),
             ),
             const SizedBox(width: 8),
             TextButton(

@@ -27,6 +27,8 @@ object DrainSchedule {
     private const val KEY_LAST_DONE_AT = "last_done_at"
     private const val KEY_REQUESTED_AT = "requested_at"
     private const val KEY_LAST_RESULT = "last_result"
+    private const val KEY_PROGRESS_DONE = "progress_done"
+    private const val KEY_PROGRESS_TOTAL = "progress_total"
     const val ACTION_ALARM = "com.friend.ios.limitless.DRAIN_ALARM"
 
     const val DEFAULT_HOUR = 2
@@ -39,6 +41,14 @@ object DrainSchedule {
     fun lastDoneAt(context: Context): Long = prefs(context).getLong(KEY_LAST_DONE_AT, 0L)
     fun requestedAt(context: Context): Long = prefs(context).getLong(KEY_REQUESTED_AT, 0L)
     fun lastResult(context: Context): String = prefs(context).getString(KEY_LAST_RESULT, "") ?: ""
+
+    /** Pages read so far / pages to read in the drain that is running (0/0 when idle). */
+    fun progress(context: Context): Pair<Int, Int> =
+        prefs(context).getInt(KEY_PROGRESS_DONE, 0) to prefs(context).getInt(KEY_PROGRESS_TOTAL, 0)
+
+    fun setProgress(context: Context, done: Int, total: Int) {
+        prefs(context).edit().putInt(KEY_PROGRESS_DONE, done).putInt(KEY_PROGRESS_TOTAL, total).apply()
+    }
 
     fun setTime(context: Context, hour: Int, minute: Int) {
         prefs(context).edit().putInt(KEY_HOUR, hour.coerceIn(0, 23)).putInt(KEY_MINUTE, minute.coerceIn(0, 59)).apply()

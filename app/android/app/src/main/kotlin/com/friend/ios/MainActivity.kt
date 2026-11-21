@@ -131,6 +131,8 @@ class MainActivity : FlutterActivity() {
                             "lastResult" to DrainSchedule.lastResult(ctx),
                             "due" to DrainSchedule.isDue(ctx),
                             "draining" to flutterPrefs.getBoolean("flutter.pendantDraining", false),
+                            "progressDone" to DrainSchedule.progress(ctx).first,
+                            "progressTotal" to DrainSchedule.progress(ctx).second,
                             "pagesStored" to (flutterPrefs.all["flutter.pendantPagesStored"] as? Number)?.toLong(),
                             "serviceRunning" to (OmiBleForegroundService.instance != null),
                             "transcribing" to tr.running,

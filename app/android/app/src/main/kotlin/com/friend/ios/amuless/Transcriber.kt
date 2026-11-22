@@ -61,6 +61,20 @@ object Transcriber {
         )
     }
 
+    /** The first configured Whisper URL that answers; the main one if none do (so the error names it). */
+    private fun chooseWhisper(context: Context): WhisperClient {
+        val model = AmulessSettings.whisperModel(context)
+        val urls = AmulessSettings.whisperUrls(context)
+        for ((i, url) in urls.withIndex()) {
+            val client = WhisperClient(url, model)
+            if (client.ping() == null) {
+                if (i > 0) EventLog.add(context, "メインの Whisper につながらないため、予備の URL を使用")
+                return client
+            }
+        }
+        return WhisperClient(urls.firstOrNull().orEmpty(), model)
+    }
+
     private fun record(context: Context, result: String, error: String = "", retryable: Boolean = false) {
         prefs(context).edit().putString("result", result).putString("error", error).putLong("at", System.currentTimeMillis())
             .putLong("next_attempt_at", if (retryable) System.currentTimeMillis() + RETRY_MS else 0L).apply()
@@ -104,7 +118,7 @@ object Transcriber {
             record(context, "not_configured", "設定(Whisper の URL、memoria の URL・トークン・ノートブック)が未入力です")
             return
         }
-        val whisper = WhisperClient(AmulessSettings.whisperUrl(context), AmulessSettings.whisperModel(context))
+        val whisper = chooseWhisper(context)
         val memoria = MemoriaClient(AmulessSettings.memoriaUrl(context), AmulessSettings.token(context)!!, AmulessSettings.notebookId(context))
 
         // 1) transcribe every file (cached per file)

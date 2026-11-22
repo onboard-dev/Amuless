@@ -15,6 +15,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final _whisperUrl = TextEditingController();
   final _model = TextEditingController();
+  final _whisperFallback = TextEditingController();
   final _memoriaUrl = TextEditingController();
   final _token = TextEditingController();
   bool _hasToken = false;
@@ -36,6 +37,7 @@ class _SettingsPageState extends State<SettingsPage> {
   void dispose() {
     _whisperUrl.dispose();
     _model.dispose();
+    _whisperFallback.dispose();
     _memoriaUrl.dispose();
     _token.dispose();
     super.dispose();
@@ -49,6 +51,7 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _whisperUrl.text = s.whisperUrl;
       _model.text = s.whisperModel;
+      _whisperFallback.text = s.whisperFallbackUrl;
       _memoriaUrl.text = s.memoriaUrl;
       _hasToken = s.hasToken;
       _notebookId = s.notebookId;
@@ -61,6 +64,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await DrainSchedule.saveSettings(
       whisperUrl: _whisperUrl.text,
       whisperModel: _model.text,
+      whisperFallbackUrl: _whisperFallback.text,
       memoriaUrl: _memoriaUrl.text,
       token: _token.text.isEmpty ? null : _token.text,
     );
@@ -139,6 +143,17 @@ class _SettingsPageState extends State<SettingsPage> {
                 decoration: const InputDecoration(
                   labelText: 'ベース URL',
                   hintText: 'http://<MacのTailscale IP>:8000/v1',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _whisperFallback,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(
+                  labelText: '予備の URL(任意)',
+                  hintText: 'http://<MacのローカルIP>:8000/v1',
+                  helperText: 'メインにつながらないとき、こちらを試します(家の Wi-Fi など)',
                   border: OutlineInputBorder(),
                 ),
               ),

@@ -62,6 +62,7 @@ class MainActivity : FlutterActivity() {
                         mapOf(
                             "whisperUrl" to AmulessSettings.whisperUrl(ctx),
                             "whisperModel" to AmulessSettings.whisperModel(ctx),
+                            "whisperFallbackUrl" to AmulessSettings.whisperFallbackUrl(ctx),
                             "memoriaUrl" to AmulessSettings.memoriaUrl(ctx),
                             "hasToken" to AmulessSettings.hasToken(ctx),
                             "notebookId" to AmulessSettings.notebookId(ctx),
@@ -78,6 +79,7 @@ class MainActivity : FlutterActivity() {
                         call.argument<String>("token"),
                         call.argument<String>("notebookId"),
                         call.argument<String>("notebookTitle"),
+                        call.argument<String>("whisperFallbackUrl"),
                     )
                     result.success(null)
                 }
@@ -86,11 +88,11 @@ class MainActivity : FlutterActivity() {
                     val main = Handler(Looper.getMainLooper())
                     Thread {
                         val msgs = ArrayList<String>()
-                        val wUrl = AmulessSettings.whisperUrl(ctx)
-                        msgs.add(
-                            if (wUrl.isEmpty()) "Whisper: URL が未入力です"
-                            else "Whisper: " + (WhisperClient(wUrl, AmulessSettings.whisperModel(ctx)).ping() ?: "OK"),
-                        )
+                        val wUrls = AmulessSettings.whisperUrls(ctx)
+                        if (wUrls.isEmpty()) msgs.add("Whisper: URL が未入力です")
+                        for ((i, wUrl) in wUrls.withIndex()) {
+                            msgs.add("Whisper(${if (i == 0) "メイン" else "予備"}): " + (WhisperClient(wUrl, AmulessSettings.whisperModel(ctx)).ping() ?: "OK"))
+                        }
                         val mUrl = AmulessSettings.memoriaUrl(ctx)
                         val token = AmulessSettings.token(ctx)
                         msgs.add(

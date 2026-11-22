@@ -102,6 +102,7 @@ class DrainSchedule {
     String? token,
     String? notebookId,
     String? notebookTitle,
+    String? whisperFallbackUrl,
   }) =>
       _channel.invokeMethod<void>('saveSettings', {
         'whisperUrl': whisperUrl,
@@ -110,6 +111,7 @@ class DrainSchedule {
         'token': token,
         'notebookId': notebookId,
         'notebookTitle': notebookTitle,
+        'whisperFallbackUrl': whisperFallbackUrl,
       });
 
   /// Notebooks on the Memoria server (needs the URL and token saved first). Throws a message string on failure.
@@ -168,6 +170,7 @@ class AppSettings {
     required this.hasToken,
     required this.notebookId,
     required this.notebookTitle,
+    required this.whisperFallbackUrl,
   });
   final String whisperUrl;
   final String whisperModel;
@@ -175,6 +178,7 @@ class AppSettings {
   final bool hasToken;
   final String notebookId;
   final String notebookTitle;
+  final String whisperFallbackUrl;
 
   factory AppSettings.fromMap(Map<Object?, Object?> m) => AppSettings(
         whisperUrl: (m['whisperUrl'] as String?) ?? '',
@@ -183,6 +187,7 @@ class AppSettings {
         hasToken: m['hasToken'] == true,
         notebookId: (m['notebookId'] as String?) ?? '',
         notebookTitle: (m['notebookTitle'] as String?) ?? '',
+        whisperFallbackUrl: (m['whisperFallbackUrl'] as String?) ?? '',
       );
 }
 

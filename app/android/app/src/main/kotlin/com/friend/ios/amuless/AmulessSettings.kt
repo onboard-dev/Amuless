@@ -16,6 +16,7 @@ object AmulessSettings {
     private const val PLAIN = "amuless_settings"
     private const val SECURE = "amuless_secure"
     private const val K_WHISPER_URL = "whisper_url"
+    private const val K_WHISPER_FALLBACK = "whisper_url_fallback"
     private const val K_WHISPER_MODEL = "whisper_model"
     private const val K_MEMORIA_URL = "memoria_url"
     private const val K_TOKEN = "memoria_token"
@@ -55,6 +56,12 @@ object AmulessSettings {
         null
     }
 
+    /** Second Whisper URL (e.g. the Mac's LAN address), tried when the main one cannot be reached. */
+    fun whisperFallbackUrl(context: Context): String = plain(context).getString(K_WHISPER_FALLBACK, "").orEmpty().trim().trimEnd('/')
+
+    /** Main URL first, then the fallback; blanks removed. */
+    fun whisperUrls(context: Context): List<String> = listOf(whisperUrl(context), whisperFallbackUrl(context)).filter { it.isNotEmpty() }.distinct()
+
     fun hasToken(context: Context): Boolean = token(context) != null
 
     /** [token]: null keeps the stored one, "" clears it. */
@@ -66,10 +73,12 @@ object AmulessSettings {
         token: String?,
         notebookId: String? = null,
         notebookTitle: String? = null,
+        whisperFallbackUrl: String? = null,
     ) {
         val e = plain(context).edit()
         whisperUrl?.let { e.putString(K_WHISPER_URL, it.trim().trimEnd('/')) }
         whisperModel?.let { e.putString(K_WHISPER_MODEL, it.trim()) }
+        whisperFallbackUrl?.let { e.putString(K_WHISPER_FALLBACK, it.trim().trimEnd('/')) }
         memoriaUrl?.let { e.putString(K_MEMORIA_URL, it.trim().trimEnd('/')) }
         notebookId?.let { e.putString(K_NOTEBOOK_ID, it.trim()) }
         notebookTitle?.let { e.putString(K_NOTEBOOK_TITLE, it.trim()) }

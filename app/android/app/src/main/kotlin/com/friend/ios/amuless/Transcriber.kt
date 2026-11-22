@@ -37,7 +37,7 @@ object RecordingFiles {
 object Transcriber {
     private const val TAG = "Amuless.Transcribe"
     private const val PREFS = "amuless_transcribe"
-    private const val RETRY_MS = 10 * 60_000L
+    private const val RETRY_MS = 2 * 60_000L
     private const val KEEP_DONE_DAYS = 7L
     private const val WAKELOCK_MS = 90 * 60_000L
 
@@ -116,7 +116,13 @@ object Transcriber {
                 if (cache.exists()) readCache(cache) else transcribeFile(context, bin, whisper).also { writeCache(cache, it) }
             } catch (e: IOException) {
                 Log.w(TAG, "transcribe failed for ${bin.name}: ${e.message}")
-                record(context, "whisper_failed", e.message ?: e.javaClass.simpleName, retryable = true)
+                val unreachable = e is java.net.ConnectException || e is java.net.SocketTimeoutException || e is java.net.UnknownHostException
+                val detail = e.message ?: e.javaClass.simpleName
+                record(
+                    context, "whisper_failed",
+                    if (unreachable) "Whisper サーバー(Mac)につながりません。Tailscale がオンか、Mac が起きているか確認してください。2分ごとに自動でやり直します。($detail)" else detail,
+                    retryable = true,
+                )
                 return
             }
             all.add(start to segments)

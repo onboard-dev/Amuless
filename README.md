@@ -46,6 +46,17 @@ cd app
 flutter build apk --release
 ```
 
+## Tailscale と Android の設定
+
+文字起こしは、自宅の Mac の mlx-audio に、Tailscale 経由でつなぎます。スマホの Tailscale は、画面のスイッチがオンでも、実際には接続が切れていることがあります(特に Xiaomi の HyperOS)。夜の自動実行が失敗しないよう、次の設定をしておいてください。
+
+- **Tailscale を「常時接続の VPN」にする。** Android の設定 → VPN → Tailscale の歯車 → 「常時接続の VPN」をオン。切れたときに、OS が自動で立て直します。
+- **鍵の有効期限を無効にする。** Tailscale の管理画面で、このスマホの「Disable key expiry」を選ぶ。期限切れでログインが外れるのを防ぎます。
+- **Tailscale と Amuless の両方で、バックグラウンドの制限を外す。** Android の電池の最適化を除外し、HyperOS ではマルチタスク画面でアプリを「ロック」し、「自動起動」を許可する(Amuless 側の記録は [docs/PENDANT.md](docs/PENDANT.md) を参照)。
+- 設定画面の Whisper の URL は、Mac の Tailscale の IP(`100.x.x.x`)にしておくと、家の中でも外でも同じ URL でつながります。家の中なら Tailscale は自動で直接つながります。
+
+Mac に届かないときは、2 分ごとに自動でやり直し、画面に「Whisper サーバー(Mac)につながりません」と理由を出します。
+
 ## ペンダントの解析メモ
 
 ボタンの操作、LED、通信の中身、Xiaomi(HyperOS)での注意点は、[docs/PENDANT.md](docs/PENDANT.md) にまとめています。

@@ -148,6 +148,10 @@ class DrainSchedule {
 
   static Future<void> setPauseReminder(int minutes) => _channel.invokeMethod<void>('setPauseReminder', {'minutes': minutes});
 
+  /// Persistent event log (service start/stop, BLE, memory, why the last process ended). op: 'clear' or null.
+  static Future<List<String>> events([String? op]) async =>
+      ((await _channel.invokeListMethod<Object?>('events', {'op': op})) ?? const []).cast<String>();
+
   static Future<List<String>> testConnections() async =>
       ((await _channel.invokeListMethod<String>('testConnections')) ?? const <String>[]);
 

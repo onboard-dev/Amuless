@@ -221,6 +221,7 @@ class OmiBleForegroundService : Service() {
             val managed = managedDevices[addr] ?: return
 
             Log.i(TAG, "onGattConnected: $addr")
+            com.friend.ios.amuless.EventLog.add(applicationContext, "ペンダントに接続")
             val diagnosticsPrefs = getSharedPreferences(PREFS_DIAGNOSTICS, MODE_PRIVATE)
             managed.hasEverConnected = managed.hasEverConnected ||
                 BleConnectionHistory.connectedBefore(diagnosticsPrefs, addr, DeviceHealthPersistence.enabled(this@OmiBleForegroundService))
@@ -267,6 +268,7 @@ class OmiBleForegroundService : Service() {
             // discovery-failure retirement and its retry takes the bounded backoff.
             val discoveryBackoffMs = bleManager.discoveryReconnectPolicy.consumeRetirementBackoffMs(addr)
             Log.i(TAG, "onGattDisconnected: $addr (status=$status)")
+            com.friend.ios.amuless.EventLog.add(applicationContext, "ペンダントから切断(status=$status)")
             handleDisconnection(addr, gattHash, status, discoveryBackoffMs)
         }
 
@@ -870,6 +872,8 @@ class OmiBleForegroundService : Service() {
         super.onCreate()
         instance = this
         lifecycle("service_start")
+        com.friend.ios.amuless.EventLog.recordPastExits(applicationContext)
+        com.friend.ios.amuless.EventLog.add(applicationContext, "サービス開始(プロセス起動または再開)")
         recordPermissionStates()
         // Transition guard: old builds used START_STICKY, so Android may re-deliver
         // a pending intent after process death before MainActivity initializes OmiBleManager.
@@ -972,6 +976,7 @@ class OmiBleForegroundService : Service() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        com.friend.ios.amuless.EventLog.add(applicationContext, "マルチタスク画面からアプリが閉じられた(サービスは${if (isPersistentModeEnabled(this)) "維持" else "停止"})")
         if (isPersistentModeEnabled(this)) {
             Log.i(TAG, "Task removed; keeping BLE foreground service alive (background/batch mode on)")
         } else {
@@ -981,8 +986,14 @@ class OmiBleForegroundService : Service() {
         super.onTaskRemoved(rootIntent)
     }
 
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= 40) com.friend.ios.amuless.EventLog.add(applicationContext, "システムのメモリ逼迫の通知(レベル $level)")
+    }
+
     override fun onDestroy() {
         Log.d(TAG, "Service destroying")
+        com.friend.ios.amuless.EventLog.add(applicationContext, "サービス終了")
         isDestroying = true
         backgroundAudioStreamer.stop("service_destroyed")
         batchAudioWriter.stop("service_destroyed")

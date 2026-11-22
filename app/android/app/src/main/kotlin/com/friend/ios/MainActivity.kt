@@ -24,6 +24,8 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
 
         OmiBleManager.initialize(application)
+        com.friend.ios.amuless.EventLog.recordPastExits(applicationContext)
+        com.friend.ios.amuless.EventLog.add(applicationContext, "アプリ画面を開いた")
         getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
             .edit()
             .putBoolean("flutter.nativeBleForegroundReady", false)
@@ -147,6 +149,11 @@ class MainActivity : FlutterActivity() {
                 "setPauseReminder" -> {
                     com.friend.ios.amuless.RecordingMonitor.setReminderMinutes(applicationContext, call.argument<Int>("minutes") ?: 60)
                     result.success(null)
+                }
+                "events" -> {
+                    val ctx = applicationContext
+                    if (call.argument<String>("op") == "clear") com.friend.ios.amuless.EventLog.clear(ctx)
+                    result.success(com.friend.ios.amuless.EventLog.lines(ctx))
                 }
                 "transcribeNow" -> {
                     Transcriber.kick(applicationContext, manual = true)

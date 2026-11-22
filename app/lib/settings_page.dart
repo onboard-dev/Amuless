@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'button_test_page.dart';
+import 'event_log_page.dart';
 import 'drain/drain_schedule.dart';
 
 /// Whisper server, Memoria URL and API token. The token is stored encrypted on the native side.
@@ -217,6 +218,17 @@ class _SettingsPageState extends State<SettingsPage> {
                   subtitle: const Text('ボタンを押したときに信号が届くか調べます'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ButtonTestPage())),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  leading: const Icon(Icons.history),
+                  title: const Text('動作の記録'),
+                  subtitle: const Text('接続・切断、サービスの終了、アプリが終了させられた理由など'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EventLogPage())),
                 ),
               ),
               const SizedBox(height: 24),

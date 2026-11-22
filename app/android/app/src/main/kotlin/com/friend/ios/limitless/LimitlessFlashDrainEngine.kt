@@ -240,6 +240,7 @@ class LimitlessFlashDrainEngine(
         phase = Phase.DRAINING
         setBoolPref("pendantDraining", true)
         Log.i(TAG, "drain start: pages ${state.oldestFlashPage}..${state.newestFlashPage} ($pageCount)")
+        com.friend.ios.amuless.EventLog.add(context, "取り込み開始: $pageCount ページ")
         write(address, LimitlessProtocol.encodeDownloadFlashPages(messageIndex++, ++requestId, batchMode = true, realTime = false))
 
         stallCheckTask?.cancel(false)
@@ -300,6 +301,7 @@ class LimitlessFlashDrainEngine(
     }
 
     private fun finishDrain(reason: String) {
+        com.friend.ios.amuless.EventLog.add(context, "取り込み終了($reason)")
         if (phase != Phase.DRAINING) return
         stallCheckTask?.cancel(false)
         stallCheckTask = null

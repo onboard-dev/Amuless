@@ -46,6 +46,11 @@ cd app
 flutter build apk --release
 ```
 
+## ペンダントの解析メモ
+
+ボタンの操作、LED、通信の中身、Xiaomi(HyperOS)での注意点は、[docs/PENDANT.md](docs/PENDANT.md) にまとめています。
+HyperOS では、Android 標準の電池の最適化を除外するだけでは足りず、マルチタスク画面でアプリを「ロック」する必要があります。
+
 ## 注意
 
 個人開発のため、**Issue と Pull Request は受け付けていません**。

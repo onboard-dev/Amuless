@@ -185,8 +185,7 @@ class _HomePageState extends State<HomePage> {
             '前回: $lastText',
             if (!d.draining && d.pagesStored != null)
               'ペンダント内の未取得: ${d.pagesStored} ページ(約${(d.pagesStored! * 1.4 / 60).round()}分ぶん)'
-                  '${_pagesChangedAt == null ? '' : '
-最後に増えた: ${_hm(_pagesChangedAt!)}(確認 ${_hm(_pagesCheckedAt!)})'}',
+                  '${_pagesChangedAt == null ? '' : '\n最後に増えた: ${_hm(_pagesChangedAt!)}(確認 ${_hm(_pagesCheckedAt!)})'}',
             if (d.draining && d.progressTotal == 0) '取り込み準備中…',
             if (d.draining && d.progressTotal > 0)
               '取り込み中 ${d.progressDone}/${d.progressTotal} ページ'

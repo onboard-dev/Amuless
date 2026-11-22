@@ -80,6 +80,7 @@ class LimitlessFlashDrainEngine(
             val config = loadConfig()
             if (config != null && !config.deviceId.equals(address, ignoreCase = true)) return@execute
             deviceAddress = address
+            com.friend.ios.amuless.RecordingMonitor.onConnected(context)
             if (phase != Phase.DRAINING) setBoolPref("pendantDraining", false)
             cycleTask?.cancel(false)
             cycleTask = executor.scheduleWithFixedDelay({ maybeRunCycle() }, FIRST_CYCLE_DELAY_MS, TICK_MS, TimeUnit.MILLISECONDS)
@@ -126,6 +127,7 @@ class LimitlessFlashDrainEngine(
 
     private fun maybeRunCycle() {
         if (deviceAddress == null || phase != Phase.IDLE) return
+        com.friend.ios.amuless.RecordingMonitor.check(context)
         val now = System.currentTimeMillis()
         // Recordings waiting from an earlier run (e.g. the server was unreachable): retry after the back-off.
         if (Transcriber.shouldRetry(context, now)) Transcriber.kick(context)
@@ -201,6 +203,7 @@ class LimitlessFlashDrainEngine(
         fragmentBuffer.remove(packet.index)
         com.friend.ios.amuless.ButtonProbe.onMessage(context, complete, phase == Phase.DRAINING)
         LimitlessProtocol.parseBatteryPercent(complete)?.let { DrainSchedule.setBattery(context, it) }
+        if (LimitlessProtocol.isStorageUpdate(complete)) com.friend.ios.amuless.RecordingMonitor.onStorageUpdate(context)
 
         if (phase == Phase.DRAINING) {
             for (page in LimitlessProtocol.parsePendantMessage(complete)) {

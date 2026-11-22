@@ -150,6 +150,9 @@ object LimitlessProtocol {
         return null
     }
 
+    /** True if [message] carries a storage update (top-level field 5): sent every few seconds only while recording. */
+    fun isStorageUpdate(message: ByteArray): Boolean = message.isNotEmpty() && (message[0].toInt() and 0xFF) == 0x2a
+
     /**
      * Battery percent from the pendant's periodic status message (top-level field 7, inner field 5),
      * or null if [message] is not one. Observed every ~70 s alongside voltage (inner 2) and temperature (inner 4).

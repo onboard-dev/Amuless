@@ -49,6 +49,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     ble.addListener(_refresh);
+    Permission.notification.request(); // for the "recording is paused" reminder
     _start();
     _pollStatus();
     _poll = Timer.periodic(const Duration(seconds: 3), (_) => _pollStatus());
@@ -166,6 +167,17 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// Recording state. A recording pendant reports storage every few seconds; silence for 2 minutes
+  /// while connected means it was paused with a long press.
+  String _recordingLine() {
+    final s = drain?.signalAt;
+    if (!ble.ready || s == null) return '';
+    final quiet = DateTime.now().difference(s);
+    if (quiet.inSeconds <= 120) return '\n録音中';
+    final since = '${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')}';
+    return '\n録音停止中($since から ${quiet.inMinutes}分)。ボタン長押しで再開';
+  }
+
   String _hm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
 
   Widget _drainCard() {
@@ -247,8 +259,9 @@ class _HomePageState extends State<HomePage> {
               leading: Icon(ble.ready ? Icons.bluetooth_connected : Icons.bluetooth_disabled),
               title: Text(paired ? (ble.pendantName ?? 'Pendant') : 'ペンダント未設定'),
               subtitle: Text('Bluetooth: ${ble.bluetoothState} / ${ble.ready ? "接続中" : "未接続"}'
-                  '${(drain?.battery ?? -1) >= 0 ? "\n電池 ${drain!.battery}%${drain!.batteryAt == null ? "" : "(${_hm(drain!.batteryAt!).substring(0, 5)} 時点)"}" : ""}'),
-              isThreeLine: (drain?.battery ?? -1) >= 0,
+                  '${(drain?.battery ?? -1) >= 0 ? "\n電池 ${drain!.battery}%${drain!.batteryAt == null ? "" : "(${_hm(drain!.batteryAt!).substring(0, 5)} 時点)"}" : ""}'
+                  '${_recordingLine()}'),
+              isThreeLine: (drain?.battery ?? -1) >= 0 || _recordingLine().isNotEmpty,
               trailing: paired ? TextButton(onPressed: ble.forget, child: const Text('解除')) : null,
             ),
           ),

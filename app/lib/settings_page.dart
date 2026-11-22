@@ -20,6 +20,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String _notebookId = '';
   String _notebookTitle = '';
   bool _loadingNotebooks = false;
+  int _pauseMin = 60;
   bool _loaded = false;
   bool _testing = false;
   List<String> _results = const [];
@@ -41,7 +42,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _load() async {
     final s = await DrainSchedule.getSettings();
+    final st = await DrainSchedule.status();
     if (!mounted) return;
+    _pauseMin = st.pauseReminderMin;
     setState(() {
       _whisperUrl.text = s.whisperUrl;
       _model.text = s.whisperModel;
@@ -183,6 +186,27 @@ class _SettingsPageState extends State<SettingsPage> {
                       : const Icon(Icons.chevron_right),
                   onTap: _loadingNotebooks ? null : _pickNotebook,
                 ),
+              ),
+              const SizedBox(height: 24),
+              Text('録音の停止', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<int>(
+                initialValue: const [0, 5, 30, 60, 90, 120, 180].contains(_pauseMin) ? _pauseMin : 60,
+                decoration: const InputDecoration(labelText: '録音が止まったままのとき通知する', border: OutlineInputBorder()),
+                items: const [
+                  DropdownMenuItem(value: 0, child: Text('通知しない')),
+                  DropdownMenuItem(value: 5, child: Text('5分後(テスト用)')),
+                  DropdownMenuItem(value: 30, child: Text('30分後')),
+                  DropdownMenuItem(value: 60, child: Text('1時間後')),
+                  DropdownMenuItem(value: 90, child: Text('1時間30分後')),
+                  DropdownMenuItem(value: 120, child: Text('2時間後')),
+                  DropdownMenuItem(value: 180, child: Text('3時間後')),
+                ],
+                onChanged: (v) async {
+                  if (v == null) return;
+                  await DrainSchedule.setPauseReminder(v);
+                  setState(() => _pauseMin = v);
+                },
               ),
               const SizedBox(height: 12),
               Card(

@@ -144,6 +144,10 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(mapOf("enabled" to com.friend.ios.amuless.ButtonProbe.enabled(ctx), "lines" to com.friend.ios.amuless.ButtonProbe.lines(ctx)))
                 }
+                "setPauseReminder" -> {
+                    com.friend.ios.amuless.RecordingMonitor.setReminderMinutes(applicationContext, call.argument<Int>("minutes") ?: 60)
+                    result.success(null)
+                }
                 "transcribeNow" -> {
                     Transcriber.kick(applicationContext, manual = true)
                     result.success(null)
@@ -162,6 +166,8 @@ class MainActivity : FlutterActivity() {
                             "draining" to flutterPrefs.getBoolean("flutter.pendantDraining", false),
                             "progressDone" to DrainSchedule.progress(ctx).first,
                             "progressTotal" to DrainSchedule.progress(ctx).second,
+                            "signalAt" to com.friend.ios.amuless.RecordingMonitor.signalAt(ctx),
+                            "pauseReminderMin" to com.friend.ios.amuless.RecordingMonitor.reminderMinutes(ctx),
                             "battery" to DrainSchedule.battery(ctx).first,
                             "batteryAt" to DrainSchedule.battery(ctx).second,
                             "pagesStored" to (flutterPrefs.all["flutter.pendantPagesStored"] as? Number)?.toLong(),

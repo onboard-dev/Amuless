@@ -12,6 +12,8 @@ class DrainStatus {
     required this.pagesStored,
     required this.progressDone,
     required this.battery,
+    required this.signalAt,
+    required this.pauseReminderMin,
     required this.batteryAt,
     required this.progressTotal,
     required this.serviceRunning,
@@ -31,6 +33,8 @@ class DrainStatus {
   final int? pagesStored;
   final int progressDone;
   final int battery; // percent, -1 unknown
+  final DateTime? signalAt; // last storage update / connect
+  final int pauseReminderMin;
   final DateTime? batteryAt;
   final int progressTotal;
   final bool serviceRunning;
@@ -53,6 +57,8 @@ class DrainStatus {
       draining: m['draining'] == true,
       pagesStored: (m['pagesStored'] as num?)?.toInt(),
       battery: (m['battery'] as num?)?.toInt() ?? -1,
+      signalAt: ((m['signalAt'] as num?)?.toInt() ?? 0) == 0 ? null : DateTime.fromMillisecondsSinceEpoch((m['signalAt'] as num).toInt()),
+      pauseReminderMin: (m['pauseReminderMin'] as num?)?.toInt() ?? 60,
       batteryAt: (m['batteryAt'] as num?)?.toInt() == null || (m['batteryAt'] as num).toInt() == 0
           ? null
           : DateTime.fromMillisecondsSinceEpoch((m['batteryAt'] as num).toInt()),
@@ -139,6 +145,8 @@ class DrainSchedule {
     final m = await _channel.invokeMapMethod<Object?, Object?>('probe', {'op': op});
     return (enabled: m?['enabled'] == true, lines: ((m?['lines'] as List?) ?? const []).cast<String>());
   }
+
+  static Future<void> setPauseReminder(int minutes) => _channel.invokeMethod<void>('setPauseReminder', {'minutes': minutes});
 
   static Future<List<String>> testConnections() async =>
       ((await _channel.invokeListMethod<String>('testConnections')) ?? const <String>[]);

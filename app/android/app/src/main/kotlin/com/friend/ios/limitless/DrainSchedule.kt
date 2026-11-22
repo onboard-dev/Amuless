@@ -50,6 +50,14 @@ object DrainSchedule {
         prefs(context).edit().putInt(KEY_PROGRESS_DONE, done).putInt(KEY_PROGRESS_TOTAL, total).apply()
     }
 
+    /** Pendant battery percent and when it was last reported (0 = never). */
+    fun battery(context: Context): Pair<Int, Long> =
+        prefs(context).getInt("battery", -1) to prefs(context).getLong("battery_at", 0L)
+
+    fun setBattery(context: Context, percent: Int) {
+        prefs(context).edit().putInt("battery", percent).putLong("battery_at", System.currentTimeMillis()).apply()
+    }
+
     fun setTime(context: Context, hour: Int, minute: Int) {
         prefs(context).edit().putInt(KEY_HOUR, hour.coerceIn(0, 23)).putInt(KEY_MINUTE, minute.coerceIn(0, 59)).apply()
         arm(context)

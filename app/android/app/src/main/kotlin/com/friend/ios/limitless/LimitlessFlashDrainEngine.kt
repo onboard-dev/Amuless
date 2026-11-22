@@ -200,6 +200,7 @@ class LimitlessFlashDrainEngine(
         }
         fragmentBuffer.remove(packet.index)
         com.friend.ios.amuless.ButtonProbe.onMessage(context, complete, phase == Phase.DRAINING)
+        LimitlessProtocol.parseBatteryPercent(complete)?.let { DrainSchedule.setBattery(context, it) }
 
         if (phase == Phase.DRAINING) {
             for (page in LimitlessProtocol.parsePendantMessage(complete)) {

@@ -11,6 +11,8 @@ class DrainStatus {
     required this.draining,
     required this.pagesStored,
     required this.progressDone,
+    required this.battery,
+    required this.batteryAt,
     required this.progressTotal,
     required this.serviceRunning,
     required this.transcribing,
@@ -28,6 +30,8 @@ class DrainStatus {
   final bool draining;
   final int? pagesStored;
   final int progressDone;
+  final int battery; // percent, -1 unknown
+  final DateTime? batteryAt;
   final int progressTotal;
   final bool serviceRunning;
   final bool transcribing;
@@ -48,6 +52,10 @@ class DrainStatus {
       due: m['due'] == true,
       draining: m['draining'] == true,
       pagesStored: (m['pagesStored'] as num?)?.toInt(),
+      battery: (m['battery'] as num?)?.toInt() ?? -1,
+      batteryAt: (m['batteryAt'] as num?)?.toInt() == null || (m['batteryAt'] as num).toInt() == 0
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch((m['batteryAt'] as num).toInt()),
       progressDone: (m['progressDone'] as num?)?.toInt() ?? 0,
       progressTotal: (m['progressTotal'] as num?)?.toInt() ?? 0,
       serviceRunning: m['serviceRunning'] == true,

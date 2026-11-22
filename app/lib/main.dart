@@ -247,7 +247,9 @@ class _HomePageState extends State<HomePage> {
             child: ListTile(
               leading: Icon(ble.ready ? Icons.bluetooth_connected : Icons.bluetooth_disabled),
               title: Text(paired ? (ble.pendantName ?? 'Pendant') : 'ペンダント未設定'),
-              subtitle: Text('Bluetooth: ${ble.bluetoothState} / ${ble.ready ? "接続中" : "未接続"}'),
+              subtitle: Text('Bluetooth: ${ble.bluetoothState} / ${ble.ready ? "接続中" : "未接続"}'
+                  '${(drain?.battery ?? -1) >= 0 ? "\n電池 ${drain!.battery}%${drain!.batteryAt == null ? "" : "(${_hm(drain!.batteryAt!).substring(0, 5)} 時点)"}" : ""}'),
+              isThreeLine: (drain?.battery ?? -1) >= 0,
               trailing: paired ? TextButton(onPressed: ble.forget, child: const Text('解除')) : null,
             ),
           ),

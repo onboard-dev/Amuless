@@ -150,6 +150,43 @@ object LimitlessProtocol {
         return null
     }
 
+    /**
+     * Battery percent from the pendant's periodic status message (top-level field 7, inner field 5),
+     * or null if [message] is not one. Observed every ~70 s alongside voltage (inner 2) and temperature (inner 4).
+     */
+    fun parseBatteryPercent(message: ByteArray): Int? {
+        try {
+            var pos = 0
+            while (pos < message.size) {
+                val tag = message[pos].toInt() and 0xFF
+                pos++
+                when (tag and 7) {
+                    0 -> pos = decodeVarint(message, pos).second
+                    2 -> {
+                        val (len, start) = decodeVarint(message, pos)
+                        val end = start + len.toInt()
+                        if (end > message.size) return null
+                        if (tag shr 3 == 7) {
+                            var p = start
+                            while (p < end) {
+                                val t = message[p].toInt() and 0xFF
+                                p++
+                                if (t and 7 != 0) return null
+                                val (v, n) = decodeVarint(message, p)
+                                p = n
+                                if (t shr 3 == 5 && v in 0..100) return v.toInt()
+                            }
+                        }
+                        pos = end
+                    }
+                    else -> return null
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return null
+    }
+
     /** Mirror of `_handlePendantMessage`: extract StorageBuffer fields (field 2) from a reassembled payload. */
     fun parsePendantMessage(payload: ByteArray): List<FlashPage> {
         val pages = mutableListOf<FlashPage>()

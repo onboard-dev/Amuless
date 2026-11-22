@@ -126,6 +126,12 @@ class DrainSchedule {
     return (m?['html'] as String?) ?? '';
   }
 
+  /// Button test: op is 'on', 'off', 'clear' or null (just read).
+  static Future<({bool enabled, List<String> lines})> probe([String? op]) async {
+    final m = await _channel.invokeMapMethod<Object?, Object?>('probe', {'op': op});
+    return (enabled: m?['enabled'] == true, lines: ((m?['lines'] as List?) ?? const []).cast<String>());
+  }
+
   static Future<List<String>> testConnections() async =>
       ((await _channel.invokeListMethod<String>('testConnections')) ?? const <String>[]);
 

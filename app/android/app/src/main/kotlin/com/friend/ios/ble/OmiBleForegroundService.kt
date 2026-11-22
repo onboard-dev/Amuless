@@ -381,6 +381,7 @@ class OmiBleForegroundService : Service() {
         ensureBackgroundAudioSubscription(addr, services)
         reportSavedReconnect(addr, "connected")
         limitlessDrainEngine.onDeviceReady(addr)
+        com.friend.ios.amuless.ButtonProbe.onReady(applicationContext, bleManager, addr, "632de003-604c-446b-a80f-7963e950f3fb")
         if (OmiBleManager.isFlutterAlive) {
             bleManager.mainHandler.post {
                 bleManager.flutterApi?.onDeviceReady(addr, services) {}
@@ -902,6 +903,7 @@ class OmiBleForegroundService : Service() {
                 batchAudioWriter.handleCharacteristic(address, serviceUuid, characteristicUuid, value)
                 backgroundAudioStreamer.handleCharacteristic(address, serviceUuid, characteristicUuid, value)
                 limitlessDrainEngine.handleCharacteristic(address, serviceUuid, characteristicUuid, value)
+                com.friend.ios.amuless.ButtonProbe.onValue(applicationContext, characteristicUuid, "632de003-604c-446b-a80f-7963e950f3fb", value)
             }
         }
         Log.d(TAG, "Service created")

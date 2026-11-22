@@ -199,6 +199,7 @@ class LimitlessFlashDrainEngine(
             offset += fragment.size
         }
         fragmentBuffer.remove(packet.index)
+        com.friend.ios.amuless.ButtonProbe.onMessage(context, complete, phase == Phase.DRAINING)
 
         if (phase == Phase.DRAINING) {
             for (page in LimitlessProtocol.parsePendantMessage(complete)) {

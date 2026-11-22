@@ -135,6 +135,15 @@ class MainActivity : FlutterActivity() {
                         main.post { result.success(reply) }
                     }.start()
                 }
+                "probe" -> {
+                    val ctx = applicationContext
+                    when (call.argument<String>("op")) {
+                        "on" -> com.friend.ios.amuless.ButtonProbe.setEnabled(ctx, true)
+                        "off" -> com.friend.ios.amuless.ButtonProbe.setEnabled(ctx, false)
+                        "clear" -> com.friend.ios.amuless.ButtonProbe.clear(ctx)
+                    }
+                    result.success(mapOf("enabled" to com.friend.ios.amuless.ButtonProbe.enabled(ctx), "lines" to com.friend.ios.amuless.ButtonProbe.lines(ctx)))
+                }
                 "transcribeNow" -> {
                     Transcriber.kick(applicationContext, manual = true)
                     result.success(null)

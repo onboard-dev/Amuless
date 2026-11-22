@@ -41,6 +41,9 @@ class _HomePageState extends State<HomePage> {
   List<FileSystemEntity> files = [];
   DrainStatus? drain;
   Timer? _poll;
+  int? _lastPages;
+  DateTime? _pagesChangedAt;
+  DateTime? _pagesCheckedAt;
 
   @override
   void initState() {
@@ -75,7 +78,17 @@ class _HomePageState extends State<HomePage> {
   Future<void> _pollStatus() async {
     try {
       final st = await DrainSchedule.status();
-      if (mounted) setState(() => drain = st);
+      if (mounted) {
+        setState(() {
+          drain = st;
+          final n = st.pagesStored;
+          if (n != null) {
+            _pagesCheckedAt = DateTime.now();
+            if (n != _lastPages) _pagesChangedAt = DateTime.now();
+            _lastPages = n;
+          }
+        });
+      }
     } catch (_) {}
     _loadFiles();
   }
@@ -153,6 +166,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  String _hm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
+
   Widget _drainCard() {
     final d = drain;
     if (d == null) return const SizedBox.shrink();
@@ -168,14 +183,17 @@ class _HomePageState extends State<HomePage> {
           title: Text('毎日 ${d.timeLabel} に取り込み'),
           subtitle: Text([
             '前回: $lastText',
-            if (!d.draining && d.pagesStored != null) 'ペンダント内の未取得: ${d.pagesStored} ページ',
+            if (!d.draining && d.pagesStored != null)
+              'ペンダント内の未取得: ${d.pagesStored} ページ(約${(d.pagesStored! * 1.4 / 60).round()}分ぶん)'
+                  '${_pagesChangedAt == null ? '' : '
+最後に増えた: ${_hm(_pagesChangedAt!)}(確認 ${_hm(_pagesCheckedAt!)})'}',
             if (d.draining && d.progressTotal == 0) '取り込み準備中…',
             if (d.draining && d.progressTotal > 0)
               '取り込み中 ${d.progressDone}/${d.progressTotal} ページ'
                   '(${(d.progressDone * 100 / d.progressTotal).clamp(0, 100).toStringAsFixed(0)}%、'
                   '音声 約${(d.progressTotal * 1.4 / 60).round()}分)',
           ].join('\n')),
-          isThreeLine: (!d.draining && d.pagesStored != null) || d.draining,
+          isThreeLine: d.draining || (d.pagesStored != null && _pagesChangedAt != null),
           trailing: TextButton(onPressed: _pickTime, child: const Text('時刻を変更')),
         ),
         if (d.draining)

@@ -41,7 +41,8 @@ class OmiBleForegroundService : Service() {
 
     companion object {
         private const val TAG = "OmiBle.FgService"
-        private const val CHANNEL_ID = "omi_ble_channel"
+        private const val CHANNEL_ID = "amuless_connection"
+        private const val OLD_CHANNEL_ID = "omi_ble_channel"
         private const val NOTIFICATION_ID = 2001
         private const val MTU_REQUEST_DELAY_MS = 100L
         private const val MTU_SIZE = 512
@@ -259,7 +260,7 @@ class OmiBleForegroundService : Service() {
 
             startStabilityTimer(addr)
             bleManager.startRssiKeepAlive(addr)
-            updateNotification("Connected to Omi")
+            updateNotification("ペンダントに接続中")
         }
 
         override fun onGattDisconnected(address: String, gattHash: Int, status: Int) {
@@ -452,7 +453,7 @@ class OmiBleForegroundService : Service() {
 
         if (!isBluetoothEnabled) {
             managedDevices[addr] = ManagedDevice(address = addr, requiresBond = requiresBond)
-            updateNotification("Bluetooth is off")
+            updateNotification("Bluetooth がオフです")
             return
         }
 
@@ -540,7 +541,7 @@ class OmiBleForegroundService : Service() {
             managed.currentGattHash = gatt.hashCode()
             managed.connectionStartTime = System.currentTimeMillis()
             managed.currentAttemptEstablished = false
-            updateNotification("Connecting to Omi...")
+            updateNotification("ペンダントに接続しています…")
         }
     }
 
@@ -592,7 +593,7 @@ class OmiBleForegroundService : Service() {
         managed.currentAttemptEstablished = true
         discardUnmeasuredAudioOutage(addr)
         healthSessions.start(addr, System.currentTimeMillis(), DeviceHealthPersistence.build(this))
-        updateNotification("Connected to Omi")
+        updateNotification("ペンダントに接続中")
         notifyReadyForConnectedGatt(addr)
     }
 
@@ -687,13 +688,13 @@ class OmiBleForegroundService : Service() {
             bleManager.flutterApi?.onPeripheralDisconnected(addr, error) {}
         }
 
-        // #3328: only claim "Reconnecting..." when a retry is actually scheduled.
+        // #3328: only claim "再接続しています…" when a retry is actually scheduled.
         // Pairing-lost (137), BT off, teardown, or status -1 never retry — an
-        // honest "Disconnected" is better than a stuck reconnect nag.
+        // honest "ペンダントと切断されています" is better than a stuck reconnect nag.
         if (retrying) {
-            updateNotification("Reconnecting...")
+            updateNotification("再接続しています…")
         } else if (!isDestroying) {
-            updateNotification("Disconnected")
+            updateNotification("ペンダントと切断されています")
         }
     }
 
@@ -821,7 +822,7 @@ class OmiBleForegroundService : Service() {
                             managed.currentGattHash = null
                         }
                     }
-                    updateNotification("Bluetooth is off")
+                    updateNotification("Bluetooth がオフです")
                 }
                 BluetoothAdapter.STATE_TURNING_ON -> {
                     isBluetoothEnabled = false
@@ -830,7 +831,7 @@ class OmiBleForegroundService : Service() {
                     lifecycle("bluetooth_on")
                     Log.i(TAG, "Bluetooth on, reconnecting in 2s")
                     isBluetoothEnabled = true
-                    updateNotification("Reconnecting...")
+                    updateNotification("再接続しています…")
                     handler.postDelayed({
                         for ((addr, _) in managedDevices) {
                             triggerReconnection(addr, "bluetoothOn")
@@ -919,7 +920,7 @@ class OmiBleForegroundService : Service() {
         // a process kill with the screen locked, or a CompanionDeviceService callback. An uncaught throw
         // silently kills the whole process ("app just disappears"). Stop cleanly instead of crashing.
         try {
-            startForeground(NOTIFICATION_ID, buildNotification("Connecting to Omi..."))
+            startForeground(NOTIFICATION_ID, buildNotification("ペンダントに接続しています…"))
         } catch (e: Exception) {
             Log.e(TAG, "startForeground failed; stopping service instead of crashing", e)
             stopSelf()
@@ -945,7 +946,7 @@ class OmiBleForegroundService : Service() {
             if (intent?.getStringExtra("caller") != "Dart" && bleManager.cccdReconnectPolicy.isExhausted(address)) {
                 managedDevices[address.uppercase()] = ManagedDevice(address.uppercase(), requiresBond)
                 reportCccdRecovery(address, "restored", exhausted = true)
-                updateNotification("Disconnected")
+                updateNotification("ペンダントと切断されています")
             } else {
                 manageDevice(address, requiresBond)
             }
@@ -958,7 +959,7 @@ class OmiBleForegroundService : Service() {
                 if (bleManager.cccdReconnectPolicy.isExhausted(parts[0])) {
                     managedDevices[parts[0].uppercase()] = ManagedDevice(parts[0], parts[1].toBoolean())
                     reportCccdRecovery(parts[0], "restored", exhausted = true)
-                    updateNotification("Disconnected")
+                    updateNotification("ペンダントと切断されています")
                 } else {
                     manageDevice(parts[0], parts[1].toBoolean())
                 }
@@ -1347,13 +1348,15 @@ class OmiBleForegroundService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Omi BLE Connection",
+            "Amuless 接続状態",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Shows Omi device connection status"
+            description = "ペンダントとの接続状態を表示します"
             setShowBadge(false)
         }
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val nm = getSystemService(NotificationManager::class.java)
+        runCatching { nm.deleteNotificationChannel(OLD_CHANNEL_ID) }
+        nm.createNotificationChannel(channel)
     }
 
     private fun buildNotification(contentText: String): Notification {
@@ -1363,7 +1366,7 @@ class OmiBleForegroundService : Service() {
         } else null
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Omi")
+            .setContentTitle("Amuless")
             .setContentText(contentText)
             .setSmallIcon(applicationInfo.icon)
             .setPriority(NotificationCompat.PRIORITY_LOW)

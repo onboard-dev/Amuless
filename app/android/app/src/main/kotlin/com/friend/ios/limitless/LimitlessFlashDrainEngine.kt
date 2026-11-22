@@ -37,6 +37,8 @@ class LimitlessFlashDrainEngine(
         private const val FLUTTER_PREFS = "FlutterSharedPreferences"
         // Amuless: tick once a minute and drain only when DrainSchedule says one is due.
         private const val TICK_MS = 60_000L
+        private const val WRITE_GAP_MS = 400L
+        private const val WRITE_ATTEMPTS = 4
         private const val RETRY_BACKOFF_MS = 10 * 60_000L
         private const val WAKELOCK_MS = 15 * 60_000L
         private const val FIRST_CYCLE_DELAY_MS = 5_000L
@@ -166,7 +168,10 @@ class LimitlessFlashDrainEngine(
         phase = Phase.AWAITING_STATUS
         acquireWakeLock()
         write(address, LimitlessProtocol.encodeSetCurrentTime(messageIndex++, ++requestId, System.currentTimeMillis()))
-        write(address, LimitlessProtocol.encodeGetDeviceStatus(messageIndex++, ++requestId))
+        // A second write right behind the first is rejected as "busy" (201) on some phones, which left
+        // the status request unsent and the drain timing out; give the stack a moment between them.
+        val statusRequest = LimitlessProtocol.encodeGetDeviceStatus(messageIndex++, ++requestId)
+        executor.schedule({ write(address, statusRequest) }, WRITE_GAP_MS, TimeUnit.MILLISECONDS)
         statusTimeoutTask?.cancel(false)
         statusTimeoutTask = executor.schedule({
             if (phase == Phase.AWAITING_STATUS) {
@@ -345,14 +350,19 @@ class LimitlessFlashDrainEngine(
 
     // ── IO helpers ──
 
-    private fun write(address: String, data: ByteArray) {
+    private fun write(address: String, data: ByteArray, attempt: Int = 1) {
         OmiBleManager.instance.writeCharacteristic(
             address,
             limitlessServiceUuid(),
             limitlessTxCharUuid(),
             data,
         ) { result ->
-            result.exceptionOrNull()?.let { Log.w(TAG, "TX write failed: ${it.message}") }
+            result.exceptionOrNull()?.let {
+                Log.w(TAG, "TX write failed (attempt $attempt): ${it.message}")
+                if (attempt < WRITE_ATTEMPTS) {
+                    executor.schedule({ write(address, data, attempt + 1) }, WRITE_GAP_MS, TimeUnit.MILLISECONDS)
+                }
+            }
         }
     }
 

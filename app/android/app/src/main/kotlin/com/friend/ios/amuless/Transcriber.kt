@@ -148,7 +148,7 @@ object Transcriber {
             val first = withText.first().first
             val zone = ZoneId.systemDefault()
             val title = ZonedDateTime.ofInstant(Instant.ofEpochSecond(first), zone)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) + " 文字起こし"
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
             val createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(first), zone).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
             try {
                 memoria.upsertNote(title, NoteHtml.build(withText, zone), createdAt)

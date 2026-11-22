@@ -175,6 +175,7 @@ class MainActivity : FlutterActivity() {
                             "draining" to flutterPrefs.getBoolean("flutter.pendantDraining", false),
                             "progressDone" to DrainSchedule.progress(ctx).first,
                             "progressTotal" to DrainSchedule.progress(ctx).second,
+                            "tailscaleUp" to com.friend.ios.amuless.TailscaleState.isUp(ctx),
                             "signalAt" to com.friend.ios.amuless.RecordingMonitor.signalAt(ctx),
                             "pauseReminderMin" to com.friend.ios.amuless.RecordingMonitor.reminderMinutes(ctx),
                             "battery" to DrainSchedule.battery(ctx).first,

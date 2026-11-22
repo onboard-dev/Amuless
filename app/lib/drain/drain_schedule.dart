@@ -13,6 +13,7 @@ class DrainStatus {
     required this.progressDone,
     required this.battery,
     required this.signalAt,
+    required this.tailscaleUp,
     required this.pauseReminderMin,
     required this.batteryAt,
     required this.progressTotal,
@@ -33,6 +34,7 @@ class DrainStatus {
   final int? pagesStored;
   final int progressDone;
   final int battery; // percent, -1 unknown
+  final bool tailscaleUp;
   final DateTime? signalAt; // last storage update / connect
   final int pauseReminderMin;
   final DateTime? batteryAt;
@@ -58,6 +60,7 @@ class DrainStatus {
       pagesStored: (m['pagesStored'] as num?)?.toInt(),
       battery: (m['battery'] as num?)?.toInt() ?? -1,
       signalAt: ((m['signalAt'] as num?)?.toInt() ?? 0) == 0 ? null : DateTime.fromMillisecondsSinceEpoch((m['signalAt'] as num).toInt()),
+      tailscaleUp: m['tailscaleUp'] == true,
       pauseReminderMin: (m['pauseReminderMin'] as num?)?.toInt() ?? 60,
       batteryAt: (m['batteryAt'] as num?)?.toInt() == null || (m['batteryAt'] as num).toInt() == 0
           ? null

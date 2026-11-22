@@ -265,6 +265,19 @@ class _HomePageState extends State<HomePage> {
               trailing: paired ? TextButton(onPressed: ble.forget, child: const Text('解除')) : null,
             ),
           ),
+          if (drain != null)
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  drain!.tailscaleUp ? Icons.vpn_key : Icons.vpn_key_off,
+                  color: drain!.tailscaleUp ? Colors.green : Theme.of(context).colorScheme.error,
+                ),
+                title: Text('Tailscale: ${drain!.tailscaleUp ? "接続中" : "切断中"}'),
+                subtitle: Text(drain!.tailscaleUp
+                    ? '自宅の Mac に文字起こしを依頼できます'
+                    : 'Tailscale をオンにしてください(家の中なら、予備の URL があればそちらを使います)'),
+              ),
+            ),
           if (paired) _drainCard(),
           if (paired) _transcribeCard(),
           if (ble.lastError != null) Text(ble.lastError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

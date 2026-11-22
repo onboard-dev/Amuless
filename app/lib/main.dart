@@ -184,13 +184,12 @@ class _HomePageState extends State<HomePage> {
           subtitle: Text([
             '前回: $lastText',
             if (!d.draining && d.pagesStored != null)
-              'ペンダント内の未取得: ${d.pagesStored} ページ(約${(d.pagesStored! * 1.4 / 60).round()}分ぶん)'
+              'ペンダント内の未取得: ${d.pagesStored} ページ'
                   '${_pagesChangedAt == null ? '' : '\n最後に増えた: ${_hm(_pagesChangedAt!)}(確認 ${_hm(_pagesCheckedAt!)})'}',
             if (d.draining && d.progressTotal == 0) '取り込み準備中…',
             if (d.draining && d.progressTotal > 0)
               '取り込み中 ${d.progressDone}/${d.progressTotal} ページ'
-                  '(${(d.progressDone * 100 / d.progressTotal).clamp(0, 100).toStringAsFixed(0)}%、'
-                  '音声 約${(d.progressTotal * 1.4 / 60).round()}分)',
+                  '(${(d.progressDone * 100 / d.progressTotal).clamp(0, 100).toStringAsFixed(0)}%)',
           ].join('\n')),
           isThreeLine: d.draining || (d.pagesStored != null && _pagesChangedAt != null),
           trailing: TextButton(onPressed: _pickTime, child: const Text('時刻を変更')),
